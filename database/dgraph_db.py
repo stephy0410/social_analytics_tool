@@ -9,8 +9,12 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 #Connection and Schema
-client_stub = pydgraph.DgraphClientStub('localhost:9080')
-client = pydgraph.DgraphClient(client_stub)
+def create_client_stub():
+    return pydgraph.DgraphClientStub('localhost:9080')
+
+def create_client(stub):
+    return pydgraph.DgraphClient(stub)
+
 logger.info(f"Connected to Dgraph at localhost:9080")
 
 def create_schema(client):
@@ -169,17 +173,20 @@ def get_following(client, user_id):
         return following
     return []
 def get_mutual_connections(client, user_id):
-    query = f"""{{
+    query = f"""
+    {{
       var(func: eq(user_id, "{user_id}")) {{
         user_uid as uid
       }}
-      user(func: uid(user_id) {{
+
+      user(func: uid(user_uid)) {{
         user_id
-        mutuals: FOLLOWS @filter(uid_in(~FOLLOWS,uid(user_uid))) {{
+        mutuals: FOLLOWS @filter(uid_in(~FOLLOWS, uid(user_uid))) {{
             user_id
         }}
       }}
-    }}"""
+    }}
+    """
     res = client.txn(read_only=True).query(query)
     result= json.loads(res.json)
     print(f"\nMutual connections of {user_id}:")

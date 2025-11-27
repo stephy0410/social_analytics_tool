@@ -1,18 +1,15 @@
 import streamlit as st
 import graphviz
 import pandas as pd
-try:
-    from social_analytics_tool.database import dgraph_db
-except ImportError:
-    import dgraph as dgraph_db
+from database import dgraph_db
 
 def render(current_user_id):
     st.markdown("## 🕸️ Network & AI Intelligence")
 
     #  1. CONNECT TO CLIENT -
     # We use the client object from dgraph.py
-    client = dgraph_db.client
-
+    stub = dgraph_db.create_client_stub()
+    client = dgraph_db.create_client(stub)
     # 2. DATA LOADING CONTROLS
     with st.expander("⚙️ Admin: Data Loader"):
         st.caption("Click this only once to load your CSV data into Dgraph.")

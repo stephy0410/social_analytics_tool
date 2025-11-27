@@ -5,6 +5,9 @@ import os
 # --- FIX: Add only the project root to sys.path ---
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, PROJECT_ROOT)
+MODULES_DIR = "modules"
+NETWORK_AI_FILE = os.path.join(MODULES_DIR, "network_ai.py")
+
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(
@@ -125,4 +128,4 @@ with tab3:
         except Exception as e:
             st.error(f"Error in Network module: {e}")
     else:
-        st.info("🛠️ You haven't created 'modules/network_ai.py' yet.")
+        st.info(f"🛠️ File not found: {NETWORK_AI_FILE}")
