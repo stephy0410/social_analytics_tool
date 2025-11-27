@@ -1,0 +1,14 @@
+#Dashboard & UI 
+streamlit
+pandas
+graphviz
+
+#Database Drivers 
+# For Dgraph 
+pydgraph
+
+# For ChromaDB & AI 
+chromadb
+
+#Utilities 
+python-dotenv

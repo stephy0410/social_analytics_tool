@@ -1,0 +1,27 @@
+
+services:
+
+
+  # 3. Dgraph (Graph Relationships)
+  dgraph:
+    image: dgraph/standalone:latest
+    container_name: social_dgraph
+    ports:
+      - "8080:8080"   # HTTP (for Ratel UI)
+      - "9080:9080"   # gRPC (for Python Client)
+      - "8000:8000"   # Ratel visualization
+    volumes:
+      - dgraph_data:/dgraph
+
+  # 4. ChromaDB (YOU: Vector Search)
+  chroma:
+    image: chromadb/chroma:latest
+    container_name: social_chroma
+    ports:
+      - "8001:8000"  # Mapping internal 8000 to host 8001 to avoid conflict with Dgraph Ratel
+    volumes:
+      - chroma_data:/chroma/chroma
+
+volumes:
+  dgraph_data:
+  chroma_data:

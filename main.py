@@ -1,5 +1,10 @@
 import streamlit as st
 import sys
+import os
+
+# --- FIX: Add only the project root to sys.path ---
+PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, PROJECT_ROOT)
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(
@@ -15,89 +20,109 @@ modules_status = {
     "network": False
 }
 
+# Try flat imports first
 try:
-    from modules import user_profile
+    import user_profile
     modules_status["profile"] = True
-except ImportError:
-    pass  #Hannah hasn't finished their file yet
+except:
+    pass
 
 try:
-    from modules import activity_trends
+    import activity_trends
     modules_status["activity"] = True
-except ImportError:
-    pass  # Fernando hasn't finished their file yet
+except:
+    pass
 
 try:
     from modules import network_ai
     modules_status["network"] = True
-except ImportError:
-    pass  #  Stephy hasn't finished their file yet
+except:
+    pass
 
-# --- 2. SIDEBAR (Global User Selection) ---
+
+# --- 2. SIDEBAR (Dynamic User Selection) ---
 st.sidebar.title("Analytics Controls")
 
-# MOCK DATA: Since we aren't connecting to MongoDB yet, use this list.
-dummy_users = [
-    {"id": "user_001", "name": "Hannah Chenoa", "handle": "@hannah1"},
-    {"id": "user_002", "name": "Luis Fernando", "handle": "@luis_fer"},
-    {"id": "user_003", "name": "Stephanie B",   "handle": "@steph_b"}
-]
+real_users = []
+try:
+    if modules_status["network"]:
+        from database import dgraph_db
 
-# The Dropdown
-selected_handle = st.sidebar.selectbox(
-    "Select User to Analyze",
-    options=[u["handle"] for u in dummy_users]
-)
+        stub = dgraph_db.create_client_stub()
+        client = dgraph_db.create_client(stub)
 
-# Get the ID (This is the "Key" that passes to every module)
-current_user_id = next(item["id"] for item in dummy_users if item["handle"] == selected_handle)
-current_user_name = next(item["name"] for item in dummy_users if item["handle"] == selected_handle)
+        # Get all Graph users
+        real_users = dgraph_db.get_all_users(client)
+
+except Exception as e:
+    st.sidebar.error(f"Dgraph Connection Error: {e}")
+
+
+# --- Dropdown logic ---
+if real_users:
+    user_list = [u['user_id'] for u in real_users]
+
+    st.sidebar.success(f"Connected: {len(user_list)} users found.")
+
+    selected_user_id = st.sidebar.selectbox(
+        "Select User to Analyze",
+        options=user_list
+    )
+
+    current_user_id = selected_user_id
+    current_user_name = selected_user_id.replace("_", " ").title()
+
+else:
+    st.sidebar.warning("*No users found in Dgraph.*")
+    st.sidebar.info("Go to Network & AI → Admin: Data Loader to upload your CSVs.")
+
+    selected_user_id = "hannah_chenoa"
+    current_user_id = "hannah_chenoa"
+    current_user_name = "System Waiting..."
+
 
 st.sidebar.markdown(f"**Active ID:** `{current_user_id}`")
 st.sidebar.markdown("---")
-st.sidebar.info("System Status: \n" + 
-                f"- Mongo Module: {'✅' if modules_status['profile'] else '❌'}\n" +
-                f"- Cassandra Module: {'✅' if modules_status['activity'] else '❌'}\n" +
-                f"- Dgraph Module: {'✅' if modules_status['network'] else '❌'}")
 
-# --- 3. MAIN CONTENT AREA ---
+
+# --- 3. MAIN CONTENT ---
 st.title(f"Dashboard: {current_user_name}")
 
-# Create the Tabs
 tab1, tab2, tab3 = st.tabs([
-    "👤 User Profile (Mongo)", 
-    "📈 Activity Logs (Cassandra)", 
+    "👤 User Profile (Mongo)",
+    "📈 Activity Logs (Cassandra)",
     "🕸️ Network & AI (Dgraph/Chroma)"
 ])
 
-# --- TAB 1: USER PROFILE ---
+
+# --- TAB 1: PROFILE ---
 with tab1:
     if modules_status["profile"]:
-        # We assume Hannah will make a function called 'render'
         try:
             user_profile.render(current_user_id)
         except Exception as e:
-            st.error(f"Error loading Teammate A's module: {e}")
+            st.error(f"Error in Profile module: {e}")
     else:
-        st.warning("⚠️ user_profile.py not found. (Waiting for Teammate A)")
+        st.warning(" user_profile.py not found.")
 
-# --- TAB 2: ACTIVITY TRENDS ---
+
+# --- TAB 2: ACTIVITY ---
 with tab2:
     if modules_status["activity"]:
-        # We assume Fernando will make a function called 'render'
         try:
             activity_trends.render(current_user_id)
         except Exception as e:
-            st.error(f"Error loading Teammate B's module: {e}")
+            st.error(f"Error in Activity module: {e}")
     else:
-        st.warning("⚠️ activity_trends.py not found. (Waiting for Teammate B)")
+        st.warning(" activity_trends.py not found.")
 
-# --- TAB 3: NETWORK & AI (YOUR PART) ---
+
+# --- TAB 3: NETWORK (YOUR PART) ---
 with tab3:
     if modules_status["network"]:
         try:
             network_ai.render(current_user_id)
         except Exception as e:
-            st.error(f"Error loading your module: {e}")
+            st.error(f"Error in Network module: {e}")
     else:
         st.info("🛠️ You haven't created 'modules/network_ai.py' yet.")
