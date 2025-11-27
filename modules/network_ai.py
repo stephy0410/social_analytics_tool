@@ -69,7 +69,7 @@ def render(current_user_id):
     # --- 4. INFLUENCER CHART ---
     st.subheader("🏆 Top Influencers")
     
-    influencers = dgraph_db.get_influencers(client, min_followers=1)
+    influencers = dgraph_db.get_influencers(client, min_followers=3)
     
     if influencers:
         # Transform the list of dicts into a DataFrame for the chart
@@ -82,3 +82,42 @@ def render(current_user_id):
             st.info("No influencers found.")
     else:
         st.info("No influencer data returned.")
+    
+    st.subheader("🤖 AI Semantic Search (ChromaDB)")
+    # Safely import your new file
+    try:
+        from database import chroma_db
+    except ImportError:
+        st.error("Missing database/chroma_db.py")
+        st.stop()
+
+    col_btn, col_search = st.columns([1, 3])
+
+    with col_btn:
+        # Button mimics loading "sentences.txt"
+        if st.button("Load Posts to Chroma"):
+            msg = chroma_db.load_from_csv('posts.csv')
+            if "Error" in msg:
+                st.error(msg)
+            else:
+                st.success(msg)
+
+    with col_search:
+        # Input mimics the "required_queries" list
+        user_query = st.text_input("Enter a query (example: 'What habits support well-being?')")
+        
+        if user_query:
+            st.markdown(f"**Query:** *'{user_query}'*")
+            
+            # Call the function that mimics collection.query()
+            results = chroma_db.query_database(user_query)
+            
+            # Display results matching the class print loop format
+            if results['documents']:
+                for i, doc in enumerate(results['documents'][0]):
+                    post_id = results['ids'][0][i]
+                    # Display like: "1. Sentence text..."
+                    st.info(f"**{i+1}.** {doc}")
+                    st.caption(f"*(Source ID: {post_id})*")
+            else:
+                st.warning("No results found. Did you load the data?")

@@ -1,11 +1,9 @@
-post_id
-post_project_launch
-post_hiring_now
-post_python_tutorial
-post_holiday_pics
-post_gym_progress
-post_new_design
-post_game_stream
-post_crypto_crash
-post_recipe_cake
-post_class_assignment
+post_id,content
+post_1,"How do computers understand meaning in language?"
+post_2,"People start preparing a meal by chopping vegetables."
+post_3,"Common ways to move include walking, driving, and flying."
+post_4,"Gymnastics and coding are activities that require coordination and skill."
+post_5,"Drinking water and sleeping well are habits that support physical well-being."
+post_6,"Studying daily results in high grades and academic success."
+post_7,"Interacting with diverse people improves academic understanding."
+post_8,"The weather in Guadalajara is perfect for hiking today."
