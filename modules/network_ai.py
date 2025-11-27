@@ -2,7 +2,16 @@ import streamlit as st
 import graphviz
 import pandas as pd
 from database import dgraph_db
-
+from textblob import TextBlob
+import altair as alt # Streamlit's built-in charting
+import nltk
+from nltk.corpus import stopwords
+from collections import Counter
+import re
+try:
+    nltk.data.find('corpora/stopwords')
+except LookupError:
+    nltk.download('stopwords')
 def render(current_user_id):
     st.markdown("## 🕸️ Network & AI Intelligence")
 
@@ -121,3 +130,95 @@ def render(current_user_id):
                     st.caption(f"*(Source ID: {post_id})*")
             else:
                 st.warning("No results found. Did you load the data?")
+    st.markdown("---")
+    st.subheader("🧠 Innovation: Sentiment Analytics")
+    st.caption("Analyze the 'Vibe' of the search results (Positive vs. Negative).")
+
+    topic_query = st.text_input("Analyze Sentiment for Topic:", key="sentiment_q")
+
+    if st.button("Analyze Brand Health"):
+        # 1. Search ChromaDB for relevant posts
+        results = chroma_db.query_database(topic_query)
+        if not results['documents']:
+            st.warning("No data found.")
+        else:
+            # 2. Analyze Sentiment for each post
+            sentiment_data = []
+            documents = results['documents'][0]
+            
+            for doc in documents:
+                analysis = TextBlob(doc)
+                score = analysis.sentiment.polarity # -1 (Bad) to +1 (Good)
+                
+                # Categorize
+                if score > 0.1: label = "Positive 🟢"
+                elif score < -0.1: label = "Negative 🔴"
+                else: label = "Neutral ⚪"
+                
+                sentiment_data.append({"Post": doc, "Score": score, "Sentiment": label})
+
+            # 3. Visualize the Result
+            df_sent = pd.DataFrame(sentiment_data)
+            
+            col_chart, col_raw = st.columns([2, 1])
+            
+            with col_chart:
+                st.write("**Sentiment Distribution**")
+                # Simple Bar Chart
+                chart = alt.Chart(df_sent).mark_bar().encode(
+                    x='Sentiment',
+                    y='count()',
+                    color='Sentiment'
+                )
+                st.altair_chart(chart, use_container_width=True)
+                
+                # Calculate Average
+                avg_score = df_sent["Score"].mean()
+                if avg_score > 0: st.success(f"Overall Vibe: Positive ({avg_score:.2f})")
+                else: st.error(f"Overall Vibe: Negative ({avg_score:.2f})")
+
+            with col_raw:
+                st.write("**Key Posts**")
+                for item in sentiment_data:
+                    st.text(f"{item['Sentiment']}: {item['Post'][:50]}...")
+    st.markdown("---")
+    st.subheader("💡 Innovation: Topic Keyword Extractor")
+    st.caption("Identifies the most frequent and relevant unique words in the search results.")
+    
+    topic_query_key = st.text_input("Find Key Topics in Posts about:", key="topic_key_q")
+
+    if st.button("Extract Keywords"):
+
+        try:
+            stopwords.words('english')
+        except:
+            nltk.download('stopwords')
+
+        # 1. Buscar posts relevantes en ChromaDB
+        results = chroma_db.query_database(topic_query_key)
+        
+        if not results['documents']:
+            st.warning("No se encontraron datos.")
+        else:
+            all_text = " ".join(results['documents'][0])
+            
+            # 2. Limpieza de Texto y Tokenización
+            # Elimina puntuación y convierte a minúsculas
+            words = re.findall(r'\b\w+\b', all_text.lower())
+            
+            # 3. Eliminar "Stop Words" (palabras comunes como 'the', 'a', 'is')
+            stop_words = set(stopwords.words('english'))
+            filtered_words = [word for word in words if word not in stop_words and len(word) > 2]
+            
+            # 4. Contar la Frecuencia
+            word_counts = Counter(filtered_words)
+            top_10 = word_counts.most_common(10)
+            
+            # 5. Visualizar los resultados
+            st.write(f"**Top 10 Keywords for '{topic_query_key}':**")
+            
+            df_keywords = pd.DataFrame(top_10, columns=['Keyword', 'Frequency'])
+            st.dataframe(df_keywords, hide_index=True)
+
+            # Opcional: Gráfico de barras
+            st.bar_chart(df_keywords.set_index('Keyword'))
