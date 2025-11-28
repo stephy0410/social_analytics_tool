@@ -7,7 +7,7 @@ from datetime import datetime
 
 
 class MongoDBManager:
-    def __init__(self, uri="mongodb://localhost:27017", db_name="social_analytics"):
+    def __init__(self, uri="mongodb://root:example@localhost:27017/", db_name="social_analytics"):
         # Se asume que no necesitas credenciales si usas la URI por defecto.
         # Si usas el docker-compose.yml que subiste, puedes necesitar:
         # uri = "mongodb://root:example@localhost:27017/"
@@ -131,7 +131,13 @@ class MongoDBManager:
 
         self.users.insert_one(user_doc)
         self.profiles.insert_one(profile_doc)
-
+        try:
+            with open("users.csv", "a", newline='', encoding='utf-8') as f:
+                writer = csv.writer(f)
+                writer.writerow([username])
+                print(f"Usuario {username} agregado a users.csv")
+        except Exception as e:
+            print(f"Error al escribir en users.csv: {e}")
         return user_id
 
     # ============================================================
@@ -273,13 +279,34 @@ class MongoDBManager:
         self.create_indexes()
         print("MongoDB structure ready!")
 
+    def sync_mongo_to_csv(self, filepath="users.csv"):
+
+            print(f"Initializing sincronization from MongoDB to {filepath}...")
+            try:
+                cursor = self.users.find({}, {"username": 1, "_id": 0})
+                
+                
+                with open(filepath, "w", newline='', encoding="utf-8") as csvfile:
+                    writer = csv.writer(csvfile)
+                    
+                    writer.writerow(["user_id"])
+                
+                    count = 0
+                    for user_doc in cursor:
+                        username = user_doc.get("username")
+                        if username:
+                            writer.writerow([username])
+                            count += 1
+                            
+                print(f"✅ ¡Sincronización exitosa! Se exportaron {count} usuarios a {filepath}.")
+                
+            except Exception as e:
+                print(f"❌ Error crítico durante la sincronización: {e}")
 
 # RUN STANDALONE
 if __name__ == "__main__":
     db = MongoDBManager()
-    db.initialize_database()
 
-    print("Importing CSV users...")
-    db.load_users_from_csv("users.csv")
-
-    print("Done! Databases:", db.client.list_database_names())
+    print("--Initializing data exporation")
+    db.sync_mongo_to_csv("users.csv")
+    print("--Completed Exportation")

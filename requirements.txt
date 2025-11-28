@@ -4,6 +4,8 @@ pandas
 graphviz
 
 #Database Drivers 
+#For mongodb
+pymongo
 # For Dgraph 
 pydgraph
 

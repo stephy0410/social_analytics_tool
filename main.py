@@ -52,7 +52,17 @@ import bcrypt
 from database.mongodb import MongoDBManager
 
 db_auth = MongoDBManager()
-
+try:
+    # Check if the 'users' collection is empty
+    if db_auth.users.count_documents({}) == 0:
+        print("⚠️ Database is empty! Auto-loading users from CSV...")
+        
+        # Call the function to load users (Ensure this exists in your mongodb.py)
+        db_auth.load_users_from_csv("users.csv") 
+        
+        print("✅ Auto-load complete.")
+except Exception as e:
+    print(f"Auto-load warning: {e}")
 # Initialize session state
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False

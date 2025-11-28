@@ -109,6 +109,7 @@ def render(current_user_id):
                         dgraph_db.load_interactions_from_csv(client, 'interactions.csv')
                         dgraph_db.create_follow_edges(client, 'follows.csv')
                     st.success("✅ Database initialized with sample data!")
+                    st.rerun()
                 except Exception as e:
                     st.error(f"❌ Error loading data: {e}")
             
