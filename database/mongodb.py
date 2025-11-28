@@ -1,0 +1,285 @@
+from pymongo import MongoClient
+from pymongo.errors import DuplicateKeyError # Importación específica del error
+from bson import ObjectId
+import bcrypt
+import csv
+from datetime import datetime
+
+
+class MongoDBManager:
+    def __init__(self, uri="mongodb://localhost:27017", db_name="social_analytics"):
+        # Se asume que no necesitas credenciales si usas la URI por defecto.
+        # Si usas el docker-compose.yml que subiste, puedes necesitar:
+        # uri = "mongodb://root:example@localhost:27017/"
+        self.client = MongoClient(uri)
+        self.db = self.client[db_name]
+
+        # Collections
+        self.users = self.db["users"]
+        self.profiles = self.db["profiles"]
+
+    # ============================================================
+    # INDEXES
+    # ============================================================
+    def create_indexes(self):
+        print("Creating indexes...")
+
+        # USERS
+        self.users.create_index("email", unique=True)
+        self.users.create_index("username", unique=True)
+        self.users.create_index("account_status")
+
+        # PROFILES
+        self.profiles.create_index("username", unique=True)
+        self.profiles.create_index("linked_social_accounts.platform_name")
+
+        print("Indexes created successfully!")
+
+    # ============================================================
+    # LOAD USERS FROM CSV (CORREGIDA con manejo de DuplicateKeyError)
+    # ============================================================
+    def load_users_from_csv(self, filepath="users.csv"):
+        print("Loading users from CSV...")
+
+        with open(filepath, newline='', encoding="utf-8") as csvfile:
+            reader = csv.DictReader(csvfile)
+
+            for row in reader:
+                raw_id = row["user_id"]
+                username = raw_id
+                # Generamos el email, que es el campo con el índice único
+                email = f"{raw_id}@example.com" 
+                full_name = raw_id.replace("_", " ").title()
+
+                user_id = ObjectId()
+
+                password_hash = bcrypt.hashpw("default123".encode(), bcrypt.gensalt())
+
+                user_doc = {
+                    "_id": user_id,
+                    "username": username,
+                    "email": email,
+                    "password_hash": password_hash.decode(),
+                    "account_status": "active",
+                    "timestamps": {
+                        "created_at": datetime.utcnow(),
+                        "modified_at": datetime.utcnow()
+                    }
+                }
+
+                profile_doc = {
+                    "_id": user_id,
+                    "username": username,
+                    "full_name": full_name,
+                    "age": 25,
+                    "gender": "unknown",
+                    "bio": "",
+                    "profile_picture_url": None,
+                    "linked_social_accounts": []
+                }
+
+                # APLICACIÓN DE LA CORRECCIÓN: Manejar el error de clave duplicada
+                try:
+                    # Intenta insertar ambos documentos
+                    self.users.insert_one(user_doc)
+                    self.profiles.insert_one(profile_doc)
+                except DuplicateKeyError:
+                    # Si ya existe por 'email' o 'username' (el índice único), lo ignoramos.
+                    print(f"Skipping existing user: {username} ({email}). Already imported.")
+                except Exception as e:
+                    # Maneja cualquier otro error inesperado.
+                    print(f"An unexpected error occurred for user {username}: {e}")
+
+        print("Users imported successfully!")
+
+    # ============================================================
+    # CREATE USER
+    # ============================================================
+    def create_user(self, username, email, password, full_name, age, gender):
+        if self.username_exists(username):
+            raise ValueError("Username already exists")
+
+        if self.email_exists(email):
+            raise ValueError("Email already exists")
+
+        user_id = ObjectId()
+
+        hashed_pw = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
+
+        user_doc = {
+            "_id": user_id,
+            "username": username,
+            "email": email,
+            "password_hash": hashed_pw.decode(),
+            "account_status": "active",
+            "timestamps": {
+                "created_at": datetime.utcnow(),
+                "modified_at": datetime.utcnow()
+            }
+        }
+
+        profile_doc = {
+            "_id": user_id,
+            "username": username,
+            "full_name": full_name,
+            "age": age,
+            "gender": gender,
+            "bio": "",
+            "profile_picture_url": None,
+            "linked_social_accounts": []
+        }
+
+        self.users.insert_one(user_doc)
+        self.profiles.insert_one(profile_doc)
+
+        return user_id
+
+    # ============================================================
+    # UPDATE PROFILE
+    # ============================================================
+    def update_profile(self, username, updates: dict):
+        updates["timestamps.modified_at"] = datetime.utcnow()
+        return self.profiles.update_one(
+            {"username": username},
+            {"$set": updates}
+        )
+
+    # Update profile picture
+    def update_profile_picture(self, username, new_url):
+        return self.update_profile(username, {"profile_picture_url": new_url})
+
+    # ============================================================
+    # PUBLIC READ
+    # ============================================================
+    def get_public_profile(self, username):
+        return self.profiles.find_one({"username": username})
+
+    # ============================================================
+    # VALIDATIONS
+    # ============================================================
+    def username_exists(self, username):
+        return self.users.find_one({"username": username}) is not None
+
+    def email_exists(self, email):
+        return self.users.find_one({"email": email}) is not None
+
+    # ============================================================
+    # ACCOUNT STATUS MANAGEMENT (REQ. 8)
+    # ⚠️ AÑADIDO: Función para cambiar el estado de la cuenta
+    # ============================================================
+    def set_account_status(self, username: str, new_status: str):
+        """Cambia el estado de la cuenta de un usuario (active, suspended, deleted)."""
+        valid_statuses = ["active", "suspended", "deleted"]
+        if new_status not in valid_statuses:
+            raise ValueError(f"Invalid status: {new_status}. Must be one of {valid_statuses}")
+            
+        result = self.users.update_one(
+            {"username": username},
+            {
+                "$set": {
+                    "account_status": new_status,
+                    "timestamps.modified_at": datetime.utcnow()
+                }
+            }
+        )
+        return result
+
+    # ============================================================
+    # LOGIN — SECURE WITH BCRYPT (CORREGIDO PARA REQ. 8)
+    # ⚠️ CORREGIDO: Añadida verificación de account_status
+    # ============================================================
+    def login(self, username, password):
+        user = self.users.find_one({"username": username})
+
+        if not user:
+            return None  # user not found
+
+        hashed = user["password_hash"].encode()
+
+        if bcrypt.checkpw(password.encode(), hashed):
+            # 🔑 REQUERIMIENTO 8: Lógica de Manejo de Estado
+            # Bloquea el login si la cuenta no está activa.
+            if user.get('account_status') != 'active':
+                raise PermissionError(f"Login failed: Account is {user.get('account_status', 'unknown').upper()}.")
+                
+            return user  # Login exitoso
+
+        return None  # Contraseña inválida
+    
+    # ============================================================
+    # ADD SOCIAL ACCOUNT (with extended fields)
+    # ============================================================
+    def add_social_account(self, username, platform, handle, followers=0, posts=0, profile_url=None):
+        account = {
+            "platform_name": platform,
+            "handle": handle,
+            "followers": followers,
+            "posts": posts,
+            "profile_url": profile_url,
+            "last_updated": datetime.utcnow()
+        }
+
+        return self.profiles.update_one(
+            {"username": username},
+            {"$push": {"linked_social_accounts": account}}
+        )
+
+    def remove_social_account(self, username, platform, handle):
+        return self.profiles.update_one(
+            {"username": username},
+            {"$pull": {"linked_social_accounts": {
+                "platform_name": platform,
+                "handle": handle
+            }}}
+        )
+
+
+    # ============================================================
+    # DELETE USER
+    # ============================================================
+    def delete_user(self, username):
+        # ⚠️ Nota: Para eliminar completamente, la función sigue siendo correcta (Req. 7)
+        self.users.delete_one({"username": username})
+        self.profiles.delete_one({"username": username})
+        return True
+
+    # ============================================================
+    # ANALYTICS
+    # ============================================================
+    def count_social_platform_usage(self):
+        pipeline = [
+            {"$unwind": "$linked_social_accounts"},
+            {
+                "$group": {
+                    "_id": "$linked_social_accounts.platform_name",
+                    "total_users": {"$sum": 1}
+                }
+            },
+            {"$sort": {"total_users": -1}}
+        ]
+        return list(self.profiles.aggregate(pipeline))
+
+    # ============================================================
+    # INIT DB (CORREGIDA para limpiar colecciones)
+    # ============================================================
+    def initialize_database(self):
+        print("Initializing MongoDB database...")
+        
+        # ⚠️ RECOMENDACIÓN: Limpiar las colecciones para evitar errores de clave duplicada
+        print("Clearing 'users' and 'profiles' collections...")
+        self.users.delete_many({})
+        self.profiles.delete_many({})
+        
+        self.create_indexes()
+        print("MongoDB structure ready!")
+
+
+# RUN STANDALONE
+if __name__ == "__main__":
+    db = MongoDBManager()
+    db.initialize_database()
+
+    print("Importing CSV users...")
+    db.load_users_from_csv("users.csv")
+
+    print("Done! Databases:", db.client.list_database_names())

@@ -5,6 +5,11 @@ import os
 # --- FIX: Add only the project root to sys.path ---
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, PROJECT_ROOT)
+
+sys.path.insert(0, os.path.join(PROJECT_ROOT, "modules"))
+sys.path.insert(0, os.path.join(PROJECT_ROOT, "database"))
+
+
 MODULES_DIR = "modules"
 NETWORK_AI_FILE = os.path.join(MODULES_DIR, "network_ai.py")
 
@@ -25,10 +30,10 @@ modules_status = {
 
 # Try flat imports first
 try:
-    import user_profile
+    from modules import user_profile
     modules_status["profile"] = True
-except:
-    pass
+except Exception as e:
+    st.sidebar.error(f"MongoDB Module Error: {e}")
 
 try:
     import activity_trends
@@ -41,6 +46,100 @@ try:
     modules_status["network"] = True
 except:
     pass
+
+# --- LOGIN SYSTEM (MongoDB + bcrypt) ---
+import bcrypt
+from database.mongodb import MongoDBManager
+
+db_auth = MongoDBManager()
+
+# Initialize session state
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
+if "logged_user" not in st.session_state:
+    st.session_state.logged_user = None
+
+def login_screen():
+    st.title("🔐 Login to Social Analytics Tool")
+
+    username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
+
+    if st.button("Login"):
+        user = db_auth.users.find_one({"username": username})
+
+        if user:
+
+            # ===============================
+            #  🚫 Account status validation
+            # ===============================
+            status = user.get("account_status", "active")
+            if status != "active":
+                st.error(f"Your account is **{status}**. Login is not allowed.")
+                st.stop()
+
+            # ===============================
+            #  🔐 Password validation
+            # ===============================
+            stored_hash = user.get("password_hash").encode()
+
+            if bcrypt.checkpw(password.encode(), stored_hash):
+                st.session_state.authenticated = True
+                st.session_state.logged_user = username
+                st.success("Welcome!")
+                st.rerun()
+            else:
+                st.error("Incorrect password.")
+
+        else:
+            st.error("Username not found.")
+
+    # NEW BUTTON
+    if st.button("Create new account"):
+        st.session_state.show_signup = True
+        st.rerun()
+
+    st.stop()
+
+
+def signup_screen():
+    st.title("📝 Create Account")
+
+    full_name = st.text_input("Full Name")
+    username = st.text_input("Username")
+    email = st.text_input("Email")
+    password = st.text_input("Password", type="password")
+    age = st.number_input("Age", min_value=1, max_value=120)
+    gender = st.selectbox("Gender", ["female", "male", "other", "unknown"])
+
+    if st.button("Create Account"):
+        try:
+            user_id = db_auth.create_user(
+                username=username,
+                email=email,
+                password=password,
+                full_name=full_name,
+                age=age,
+                gender=gender,
+            )
+
+            st.success("Account created successfully! You can now log in.")
+            st.session_state.show_signup = False
+            st.rerun()
+
+        except ValueError as e:
+            st.error(str(e))
+
+
+# If user clicked "Create account", show signup screen
+if st.session_state.get("show_signup"):
+    signup_screen()
+    st.stop()
+
+# If not authenticated → show login ONLY
+if not st.session_state.authenticated:
+    login_screen()
+
 
 
 # --- 2. SIDEBAR (Dynamic User Selection) ---

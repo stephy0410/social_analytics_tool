@@ -1,27 +1,52 @@
-
 services:
 
-
-  # 3. Dgraph (Graph Relationships)
+  # Dgraph
   dgraph:
     image: dgraph/standalone:latest
     container_name: social_dgraph
     ports:
-      - "8080:8080"   # HTTP (for Ratel UI)
-      - "9080:9080"   # gRPC (for Python Client)
-      - "8000:8000"   # Ratel visualization
+      - "8080:8080"
+      - "9080:9080"
+      - "8000:8000"
     volumes:
       - dgraph_data:/dgraph
 
-  # 4. ChromaDB (YOU: Vector Search)
+  # ChromaDB
   chroma:
     image: chromadb/chroma:latest
     container_name: social_chroma
     ports:
-      - "8001:8000"  # Mapping internal 8000 to host 8001 to avoid conflict with Dgraph Ratel
+      - "8001:8000"
     volumes:
       - chroma_data:/chroma/chroma
+
+  # MongoDB (your part)
+  mongo:
+    image: mongo:latest
+    container_name: social_mongo
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example
+    volumes:
+      - mongo_data:/data/db
+
+  # Mongo Express UI
+  mongo-express:
+    image: mongo-express:latest
+    container_name: social_mongo_express
+    ports:
+      - "8081:8081"
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: root
+      ME_CONFIG_MONGODB_ADMINPASSWORD: example
+      ME_CONFIG_MONGODB_URL: mongodb://root:example@mongo:27017/
+    depends_on:
+      - mongo
+
 
 volumes:
   dgraph_data:
   chroma_data:
+  mongo_data:
