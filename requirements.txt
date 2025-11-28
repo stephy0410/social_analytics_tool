@@ -9,7 +9,9 @@ pydgraph
 
 # For ChromaDB & AI 
 chromadb
-textblob
+transformers
+torch
+scipy
 nltk
 #Utilities 
 python-dotenv
