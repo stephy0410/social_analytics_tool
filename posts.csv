@@ -1,9 +1,39 @@
-post_id,content
-post_1,"How do computers understand meaning in language?"
-post_2,"People start preparing a meal by chopping vegetables."
-post_3,"Common ways to move include walking, driving, and flying."
-post_4,"Gymnastics and coding are activities that require coordination and skill."
-post_5,"Drinking water and sleeping well are habits that support physical well-being."
-post_6,"Studying daily results in high grades and academic success."
-post_7,"Interacting with diverse people improves academic understanding."
-post_8,"The weather in Guadalajara is perfect for hiking today."
+post_id,content,user_id,timestamp,post_type
+post_101,"Just finished my final project for Non-Relational Databases! Built a social media analytics tool using MongoDB, Cassandra, Dgraph, and ChromaDB. The graph visualizations are so satisfying to see! #coding #databases #studentlife",hannah_chenoa,2025-01-15T14:30:00Z,education
+post_102,"Anyone else struggling with understanding the CAP theorem? I get the concept but applying it to real scenarios is tough. Study group anyone? #databases #exam",luis_fernando,2025-01-16T09:15:00Z,education
+post_103,"The new AI features in Python libraries are absolute game changers. Just implemented semantic search with ChromaDB and the results are mind-blowing. This is the future of information retrieval! #AI #machinelearning #python",stephanie_borrego,2025-01-16T11:45:00Z,technology
+post_104,"Looking for a co-founder for a tech startup focused on data analytics. Need someone who knows React, Node.js, and has experience with graph databases. DM me if interested! #startup #hiring #tech",adan_juarez,2025-01-17T16:20:00Z,career
+post_105,"Why does my code always work perfectly on localhost but crashes spectacularly in production? Docker containers hate me apparently 😭 #developerproblems #debugging",dev_diana,2025-01-17T22:10:00Z,technology
+post_106,"Dgraph's GraphQL support is seriously underrated. Just migrated our entire API and the query performance improved by 300%. If you're still using REST for everything, you're missing out.",dev_edward,2025-01-18T10:05:00Z,technology
+post_107,"Hot take: NoSQL databases aren't replacing SQL, they're complementing it. Used MongoDB for user profiles and PostgreSQL for transactions in the same project. Works beautifully. #databases",prof_leobardo,2025-01-18T13:40:00Z,education
+post_108,"Successfully defended my thesis on distributed systems! Three years of research finally paid off. Thank you to everyone who supported me through this journey 🎓",student_alice,2025-01-19T15:25:00Z,education
+post_201,"Found the most incredible taquería in Guadalajara last night! The tacos de birria with consomé were absolutely divine. The salsa verde had the perfect kick. If you're in the area, you NEED to try Tacos Don Juan near Plaza de la Liberación 🌮🔥",foodie_1,2025-01-15T20:30:00Z,food
+post_202,"Sunday morning ritual: Strong coffee, a good book, and complete silence. Currently reading 'Designing Data-Intensive Applications' and it's changing how I think about system architecture. Highly recommend! ☕📚",luis_fernando,2025-01-19T08:15:00Z,lifestyle
+post_203,"Attempted to make homemade sushi today. Let's just say the rice was sticky... but not in the right way. The salmon was great though! Ordering from my favorite sushi place instead 🍣😅",hannah_chenoa,2025-01-20T19:45:00Z,food
+post_204,"Looking for vegetarian restaurant recommendations in the city for an anniversary dinner. Needs to be romantic but not too fancy. Bonus points if they have good wine! 🍷",stephanie_borrego,2025-01-20T12:30:00Z,food
+post_205,"Week 3 of meal prep discipline. Chicken, quinoa, roasted veggies, and sweet potato. My body thanks me but my taste buds are getting bored. Anyone have healthy recipe ideas? #mealprep #healthyeating",fitness_2,2025-01-21T17:00:00Z,food
+post_206,"Discovered this amazing coffee shop that also hosts tech meetups. Great espresso AND networking opportunities? Sign me up! #coffee #networking",adan_juarez,2025-01-21T14:20:00Z,lifestyle
+post_301,"Hit a new personal record on bench press today! 100kg for 5 reps! The grind is real but so worth it 💪 Next goal: 110kg by March #gymrat #fitness #strength",fitness_2,2025-01-16T18:45:00Z,fitness
+post_302,"Started training for my first marathon today. 5km run and my legs are already screaming. This is going to be a long journey but I'm committed! Anyone have training tips? 🏃‍♂️",luis_fernando,2025-01-17T06:30:00Z,fitness
+post_303,"Morning yoga session in the park was exactly what I needed. The combination of nature and mindfulness is incredibly powerful for stress relief. Highly recommend for anyone feeling overwhelmed! 🧘‍♀️",hannah_chenoa,2025-01-18T07:15:00Z,fitness
+post_304,"I seriously need to fix my sleep schedule. Going to bed at 3am and waking up at noon is destroying my productivity. Starting tonight: phone away by 11pm, reading instead of scrolling. Wish me luck! 😴",dev_diana,2025-01-19T23:45:00Z,lifestyle
+post_305,"Does anyone know good hiking trails near Guadalajara? Want to get outdoors this weekend and disconnect from screens for a bit. Moderate difficulty preferred! 🥾⛰️",stephanie_borrego,2025-01-20T10:00:00Z,fitness
+post_306,"Completed my first 10K race! Time wasn't amazing but I finished without walking. The running community is so supportive and encouraging. Already signed up for the next one! 🏅",student_bob,2025-01-21T16:30:00Z,fitness
+post_401,"Just booked my tickets to Japan! Tokyo, Kyoto, and Osaka here I come! ✈️🇯🇵 Been dreaming about this trip for years. Any recommendations for must-see spots or hidden gems?",travel_z,2025-01-15T21:00:00Z,travel
+post_402,"The sunset at Puerto Vallarta beach was absolutely breathtaking. The sky turned every shade of pink and orange. Photos don't do it justice but I tried anyway 🌅",hannah_chenoa,2025-01-17T19:20:00Z,travel
+post_403,"Movie marathon weekend! Watching all the Lord of the Rings extended editions back-to-back. Currently on The Two Towers. This trilogy never gets old 🎬",gamer_x,2025-01-18T22:30:00Z,entertainment
+post_404,"Listening to Bad Bunny's new album on repeat. 'Monaco' is an absolute banger. This man never misses! 🎵🔥",student_alice,2025-01-19T11:45:00Z,entertainment
+post_405,"Already missing those warm summer days. Winter is coming and I am definitely NOT ready for the cold weather. Time to invest in a good jacket ❄️",luis_fernando,2025-01-20T15:30:00Z,lifestyle
+post_406,"Binge-watched the entire first season of that new sci-fi series on Netflix. The plot twists in episode 7 were insane! No spoilers but WOW 🤯",dev_edward,2025-01-21T01:15:00Z,entertainment
+post_501,"Attended the Intel networking event today. Met some brilliant engineers working on next-gen processors. These events are always awkward at first but so valuable for career growth 🤝",amazon_recruiter,2025-01-16T20:00:00Z,career
+post_502,"How does everyone manage stress during finals week? I'm drowning in assignments, three exams, and a major project due. Coffee is my only friend right now ☕😵",student_bob,2025-01-17T13:20:00Z,education
+post_503,"JUST GOT ACCEPTED INTO THE AMAZON INTERNSHIP PROGRAM! All those late nights studying algorithms and practicing LeetCode problems finally paid off! So grateful and excited! 🎉",stephanie_borrego,2025-01-18T16:45:00Z,career
+post_504,"Spending my Saturday studying data structures and algorithms. Linked lists, trees, graphs... it's all starting to click but man, graph traversal algorithms are tricky 🌳",adan_juarez,2025-01-19T14:00:00Z,education
+post_505,"Big presentation tomorrow on our database project. Been rehearsing all day. Nervous but I know we built something impressive. Time to shine! 🎤 #publicspeaking",hannah_chenoa,2025-01-20T21:30:00Z,education
+post_506,"Does anyone have experience negotiating tech job offers? Just got an offer but the salary seems low for the role. Don't want to be greedy but also want to be paid fairly 💼",dev_diana,2025-01-21T09:40:00Z,career
+post_601,"The crypto market crash is a harsh reminder that diversification matters. Never put all your eggs in one basket. Traditional investments still have their place 📉",crypto_king,2025-01-16T08:30:00Z,finance
+post_602,"Interesting research paper on how graph databases can improve social network analysis. The applications for recommendation systems are fascinating!",prof_leobardo,2025-01-17T10:15:00Z,technology
+post_603,"Just deployed my first microservices architecture to production. Kubernetes is powerful but the learning curve is STEEP. Documentation is your best friend 🚀",dev_edward,2025-01-18T14:50:00Z,technology
+post_604,"Climate change is the defining challenge of our generation. We need more engineers working on sustainable technology solutions. Who's with me? 🌍",student_alice,2025-01-19T12:00:00Z,social
+post_605,"Started learning Rust today. The borrow checker is both brilliant and frustrating. But I can see why everyone loves this language for systems programming ⚙️",dev_diana,2025-01-20T16:20:00Z,technology
+post_606,"Reminder: Imposter syndrome is real and totally normal in tech. You belong here. Your contributions matter. Keep pushing forward! 💪",amazon_recruiter,2025-01-21T11:00:00Z,career
