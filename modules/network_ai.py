@@ -53,11 +53,12 @@ def analyze_sentiment_hf_api(text, api_key, max_retries=3):
                     api_label = top_result.get('label', '')
                     # If the API returns NEGATIVE/POSITIVE (legacy), use it, otherwise map LABEL_x
                     final_label = roberta_map.get(api_label, api_label)
+                    upper_label = final_label.upper()
                     
                     # Normalize legacy caps if needed
-                    if final_label == "NEGATIVE": final_label = "Negative 🔴"
-                    if final_label == "POSITIVE": final_label = "Positive 🟢"
-                    if final_label == "NEUTRAL": final_label = "Neutral ⚪"
+                    if upper_label == "NEGATIVE": final_label = "Negative 🔴"
+                    elif upper_label == "POSITIVE": final_label = "Positive 🟢"
+                    elif upper_label == "NEUTRAL": final_label = "Neutral ⚪"
 
                     return {'label': final_label, 'score': top_result.get('score', 0.0)}
                 
