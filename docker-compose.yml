@@ -1,6 +1,8 @@
 services:
 
-  # Dgraph
+  # ==========================
+  # DGRAPH
+  # ==========================
   dgraph:
     image: dgraph/standalone:latest
     container_name: social_dgraph
@@ -11,7 +13,9 @@ services:
     volumes:
       - dgraph_data:/dgraph
 
-  # ChromaDB
+  # ==========================
+  # CHROMADB
+  # ==========================
   chroma:
     image: chromadb/chroma:latest
     container_name: social_chroma
@@ -20,7 +24,9 @@ services:
     volumes:
       - chroma_data:/chroma/chroma
 
-  # MongoDB (your part)
+  # ==========================
+  # MONGODB (AUTH ENABLED)
+  # ==========================
   mongo:
     image: mongo:latest
     container_name: social_mongo
@@ -32,7 +38,9 @@ services:
     volumes:
       - mongo_data:/data/db
 
-  # Mongo Express UI
+  # ==========================
+  # MONGO EXPRESS
+  # ==========================
   mongo-express:
     image: mongo-express:latest
     container_name: social_mongo_express
@@ -45,8 +53,37 @@ services:
     depends_on:
       - mongo
 
+  # ==========================
+  # CASSANDRA (NEW)
+  # ==========================
+  cassandra:
+    image: cassandra:4.1
+    container_name: social_cassandra
+    ports:
+      - "9042:9042"        # main CQL port
+    environment:
+      MAX_HEAP_SIZE: "512M"
+      HEAP_NEWSIZE: "100M"
+    volumes:
+      - cassandra_data:/var/lib/cassandra
+
+  # ==========================
+  # CASSANDRA WEB UI (OPTIONAL)
+  # ==========================
+  cassandra-web:
+    image: ipushc/cassandra-web
+    container_name: social_cassandra_web
+    ports:
+      - "3000:3000"
+    environment:
+      CASSANDRA_HOST: cassandra
+      CASSANDRA_PORT: 9042
+    depends_on:
+      - cassandra
+
 
 volumes:
   dgraph_data:
   chroma_data:
   mongo_data:
+  cassandra_data:

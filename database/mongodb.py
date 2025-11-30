@@ -11,7 +11,7 @@ class MongoDBManager:
         # Se asume que no necesitas credenciales si usas la URI por defecto.
         # Si usas el docker-compose.yml que subiste, puedes necesitar:
         # uri = "mongodb://root:example@localhost:27017/"
-        self.client = MongoClient(uri)
+        self.client = MongoClient("mongodb://localhost:27017/")
         self.db = self.client[db_name]
 
         # Collections

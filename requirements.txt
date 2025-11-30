@@ -1,13 +1,15 @@
-#Dashboard & UI 
+# Dashboard & UI 
 streamlit
 pandas
 graphviz
 
-#Database Drivers 
-#For mongodb
+# Database Drivers 
+# For MongoDB
 pymongo
 # For Dgraph 
 pydgraph
+# For Cassandra
+cassandra-driver
 
 # For ChromaDB & AI 
 chromadb
@@ -15,5 +17,6 @@ transformers
 torch
 scipy
 nltk
-#Utilities 
+
+# Utilities 
 python-dotenv

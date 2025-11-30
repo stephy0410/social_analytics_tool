@@ -36,10 +36,11 @@ except Exception as e:
     st.sidebar.error(f"MongoDB Module Error: {e}")
 
 try:
-    import activity_trends
+    from modules import activity_logs
     modules_status["activity"] = True
-except:
-    pass
+except Exception as e:
+    st.sidebar.error(f"Cassandra Module Error: {e}")
+
 
 try:
     from modules import network_ai
@@ -222,11 +223,12 @@ with tab1:
 with tab2:
     if modules_status["activity"]:
         try:
-            activity_trends.render(current_user_id)
+            activity_logs.render(current_user_id)
         except Exception as e:
-            st.error(f"Error in Activity module: {e}")
+            st.error(f"Error in Activity Logs module: {e}")
     else:
-        st.warning(" activity_trends.py not found.")
+        st.warning("activity_logs.py not found.")
+
 
 
 # --- TAB 3: NETWORK (YOUR PART) ---
