@@ -14,7 +14,7 @@ def render(current_user_id: str):
     if st.button("📥 Import activity_logs.csv"):
         try:
             db.load_demo_from_csv("activity_logs.csv")
-            st.success("CSV imported into Cassandra successfully.")
+            st.success("CSV imported into Cassandra successfully.")  
         except Exception as e:
             st.error(f"Error importing CSV: {e}")
 

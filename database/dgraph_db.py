@@ -8,14 +8,14 @@ import os
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# --- CONNECTION ---
+# CONNECTION
 def create_client_stub():
     return pydgraph.DgraphClientStub('localhost:9080')
 
 def create_client(stub):
     return pydgraph.DgraphClient(stub)
 
-# --- SCHEMA ---
+# SCHEMA
 def create_schema(client):
     schema = """
         user_id: string @index(exact) .
@@ -61,7 +61,7 @@ def create_schema(client):
     op = pydgraph.Operation(schema=schema)
     client.alter(op)
     logger.info("Schema created successfully")
-# --- IMPROVED UID LOOKUP ---
+# IMPROVED UID LOOKUP
 def get_uid(client, identifier, is_post=False):
     """More robust UID lookup that handles both existing and new nodes"""
     if not identifier:
@@ -109,9 +109,9 @@ def create_missing_node(client, identifier, is_post=False):
     finally:
         txn.discard()
 
-# --- CSV PERSISTENCE FUNCTIONS ---
+# CSV PERSISTENCE FUNCTIONS
 def save_interaction_to_csv(user_id, post_id, interaction_type, file_path='interactions.csv'):
-    """Append new interaction to CSV file"""
+    
     try:
         # Check if file exists
         file_exists = os.path.isfile(file_path)
@@ -146,7 +146,7 @@ def save_interaction_to_csv(user_id, post_id, interaction_type, file_path='inter
         return False
 
 def save_follow_to_csv(follower_id, followed_id, file_path='follows.csv'):
-    """Append new follow relationship to CSV file"""
+    
     try:
         file_exists = os.path.isfile(file_path)
         
@@ -237,6 +237,7 @@ def load_posts_from_csv(client, file_path='posts.csv'):
         txn.discard()
 
 def load_interactions_from_csv(client, file_path='interactions.csv'):
+    
     txn = client.txn()
     try:
         success_count = 0
@@ -252,25 +253,19 @@ def load_interactions_from_csv(client, file_path='interactions.csv'):
                     user_id = row.get('user_id', '').strip()
                     post_id = row.get('post_id', '').strip()
                     interaction_type = row.get('interaction_type', '').upper().strip()
+                    timestamp = row.get('timestamp', datetime.now().isoformat()).strip()
                     
                     if not all([user_id, post_id, interaction_type]):
-                        logger.warning(f"Row {row_num}: Missing required fields, skipping")
                         skipped_count += 1
                         continue
                     
-                    # Convert interaction type to edge name
                     edge_map = {
-                        'LIKE': 'LIKED_POST',
-                        'COMMENT': 'COMMENTED_POST', 
-                        'SHARE': 'SHARED_POST',
-                        'LIKED_POST': 'LIKED_POST',
-                        'COMMENTED_POST': 'COMMENTED_POST',
-                        'SHARED_POST': 'SHARED_POST'
+                        'LIKE': 'LIKED_POST', 'COMMENT': 'COMMENTED_POST', 'SHARE': 'SHARED_POST',
+                        'LIKED_POST': 'LIKED_POST', 'COMMENTED_POST': 'COMMENTED_POST', 'SHARED_POST': 'SHARED_POST'
                     }
                     
                     edge_name = edge_map.get(interaction_type)
                     if not edge_name:
-                        logger.warning(f"Row {row_num}: Invalid interaction type '{interaction_type}', skipping")
                         skipped_count += 1
                         continue
                     
@@ -278,17 +273,20 @@ def load_interactions_from_csv(client, file_path='interactions.csv'):
                     post_uid = get_uid(client, post_id, is_post=True)
                     
                     if user_uid and post_uid:
+                        # ✅ CORRECT: Store timestamp as a FACET using pipe syntax
                         mutation = {
                             'uid': user_uid,
                             edge_name: {
-                                'uid': post_uid, 
-                                'timestamp': datetime.now().isoformat()
+                                'uid': post_uid,
+                                f'{edge_name}|timestamp': timestamp
                             }
                         }
                         txn.mutate(set_obj=mutation)
                         success_count += 1
+                        
+                        if success_count <= 3:  # Log first 3 for debugging
+                            logger.info(f"Loaded: {user_id} -> {edge_name} -> {post_id} with facet timestamp={timestamp}")
                     else:
-                        logger.warning(f"Row {row_num}: Could not find UIDs for {user_id} -> {post_id}")
                         skipped_count += 1
                         
                 except Exception as row_error:
@@ -297,13 +295,14 @@ def load_interactions_from_csv(client, file_path='interactions.csv'):
                     continue
         
         txn.commit()
-        logger.info(f"Loaded {success_count} interactions ({skipped_count} skipped)")
+        logger.info(f"✓ Loaded {success_count} interactions WITH timestamp facets")
         return success_count
     except Exception as e:
         logger.error(f"Error loading interactions: {e}")
         return 0
     finally:
         txn.discard()
+                  
 def create_follow_edges(client, file_path='follows.csv'):
     txn = client.txn()
     try:
@@ -360,7 +359,7 @@ def create_follow_edges(client, file_path='follows.csv'):
         txn.discard()
 # --- IMPROVED REAL-TIME UPDATES WITH CSV PERSISTENCE ---
 def add_realtime_interaction(client, user_id, post_id, interaction_type):
-    """Fixed real-time interaction with CSV persistence"""
+    
     if not user_id or not post_id:
         return False, "User ID and Post ID are required"
     
@@ -384,15 +383,19 @@ def add_realtime_interaction(client, user_id, post_id, interaction_type):
 
     txn = client.txn()
     try:
+        current_time = datetime.now().isoformat()
+        
         mutation = {
             'uid': user_uid,
             edge: {
-                'uid': post_uid, 
-                'timestamp': datetime.now().isoformat()
+                'uid': post_uid,
+                f'{edge}|timestamp': current_time
             }
         }
         txn.mutate(set_obj=mutation)
         txn.commit()
+        
+        logger.info(f"✓ Added: {user_id} -> {edge} -> {post_id} with facet timestamp={current_time}")
         
         # Save to CSV
         save_interaction_to_csv(user_id, post_id, interaction_type)
@@ -442,28 +445,21 @@ def add_realtime_follow(client, follower_id, followed_id):
     finally:
         txn.discard()
 def get_engagement_metrics(client, user_id, start_date=None, end_date=None):
-    """
-    Fixed engagement metrics with DATE RANGE FILTERING.
-    Format dates as ISO strings: '2023-01-01'
-    """
     try:
         create_schema(client)
     except Exception:
-        pass  
-    # Base filter string
-    date_filter = ""
-    if start_date and end_date:
-        # Dgraph syntax: @filter(ge(timestamp, "START") AND le(timestamp, "END"))
-        date_filter = f'@filter(ge(timestamp, "{start_date}") AND le(timestamp, "{end_date}"))'
+        pass
     
+    logger.info(f"=== GET_ENGAGEMENT_METRICS ===")
+    logger.info(f"User: {user_id}, Dates: {start_date} to {end_date}")
+    
+    # Get user's posts
     query = f"""{{
       user(func: eq(user_id, "{user_id}")) {{
         user_id
         posts: ~POSTED_BY {{
           post_id
-          likes: count(~LIKED_POST {date_filter})
-          comments: count(~COMMENTED_POST {date_filter}) 
-          shares: count(~SHARED_POST {date_filter})
+          uid
         }}
       }}
     }}"""
@@ -472,26 +468,82 @@ def get_engagement_metrics(client, user_id, start_date=None, end_date=None):
         res = client.txn(read_only=True).query(query)
         data = json.loads(res.json)
         
-        if data.get('user') and len(data['user']) > 0:
-            user_data = data['user'][0]
-            posts = user_data.get('posts', [])
+        if not data.get('user') or len(data['user']) == 0:
+            logger.warning(f"No user found: {user_id}")
+            return {'posts': [], 'total_likes': 0, 'total_comments': 0, 'total_shares': 0, 'post_count': 0}
+        
+        posts = data['user'][0].get('posts', [])
+        logger.info(f"Found {len(posts)} posts")
+        
+        if not posts:
+            return {'posts': [], 'total_likes': 0, 'total_comments': 0, 'total_shares': 0, 'post_count': 0}
+        
+        enriched_posts = []
+        total_likes = 0
+        total_comments = 0
+        total_shares = 0
+        
+        for post in posts:
+            post_uid = post['uid']
+            post_id = post['post_id']
             
-            total_likes = sum(p.get('likes', 0) for p in posts)
-            total_comments = sum(p.get('comments', 0) for p in posts)
-            total_shares = sum(p.get('shares', 0) for p in posts)
+            # Date filter for facets
+            date_filter = ""
+            if start_date and end_date:
+                date_filter = f'@facets(ge(timestamp, "{start_date}") AND le(timestamp, "{end_date}"))'
             
-            return {
-                'posts': posts,
-                'total_likes': total_likes,
-                'total_comments': total_comments, 
-                'total_shares': total_shares,
-                'post_count': len(posts)
-            }
-        return {'posts': [], 'total_likes': 0, 'total_comments': 0, 'total_shares': 0, 'post_count': 0}
+            # Query users who interacted with this post
+            interaction_query = f"""{{
+              users(func: type(User)) @filter(
+                uid_in(LIKED_POST, {post_uid}) OR 
+                uid_in(COMMENTED_POST, {post_uid}) OR 
+                uid_in(SHARED_POST, {post_uid})
+              ) {{
+                user_id
+                liked: LIKED_POST @filter(uid({post_uid})) {date_filter} {{
+                  post_id
+                }}
+                commented: COMMENTED_POST @filter(uid({post_uid})) {date_filter} {{
+                  post_id
+                }}
+                shared: SHARED_POST @filter(uid({post_uid})) {date_filter} {{
+                  post_id
+                }}
+              }}
+            }}"""
+            
+            interaction_res = client.txn(read_only=True).query(interaction_query)
+            interaction_data = json.loads(interaction_res.json)
+            
+            users = interaction_data.get('users', [])
+            likes = sum(1 for u in users if u.get('liked'))
+            comments = sum(1 for u in users if u.get('commented'))
+            shares = sum(1 for u in users if u.get('shared'))
+            
+            enriched_posts.append({
+                'post_id': post_id,
+                'likes': likes,
+                'comments': comments,
+                'shares': shares
+            })
+            
+            total_likes += likes
+            total_comments += comments
+            total_shares += shares
+        
+        result = {
+            'posts': enriched_posts,
+            'total_likes': total_likes,
+            'total_comments': total_comments,
+            'total_shares': total_shares,
+            'post_count': len(posts)
+        }
+        logger.info(f"Result: {total_likes} likes, {total_comments} comments, {total_shares} shares")
+        return result
+        
     except Exception as e:
-        logger.error(f"Engagement metrics error: {e}")
+        logger.error(f"Engagement metrics error: {e}", exc_info=True)
         return {'posts': [], 'total_likes': 0, 'total_comments': 0, 'total_shares': 0, 'post_count': 0}
-
 def get_following(client, user_id):
     
     query = f"""{{
@@ -569,10 +621,6 @@ def drop_all_data(client):
         logger.error(f"Error dropping data: {e}")
         return False
 def get_community_clusters(client, current_user_id=None):
-    """
-    Finds triangles specifically involving the current user.
-    Path: User -> Friend (A) -> Friend of Friend (B) -> User
-    """
     if not current_user_id:
         return []
 
@@ -622,10 +670,6 @@ def get_community_clusters(client, current_user_id=None):
         logger.error(f"Cluster error: {e}")
         return []
 def compute_relationship_strength(client, user_id):
-    """
-    Computes strength based on interaction frequency.
-    Formula: Base (0.1) + (Likes * 0.2) + (Comments * 0.5) + (Shares * 1.0)
-    """
     query = f"""{{
         user(func: eq(user_id, "{user_id}")) {{
             uid
@@ -696,10 +740,7 @@ def compute_relationship_strength(client, user_id):
 
 
 def get_follower_growth(client, user_id):
-    """
-    Returns a list of {user_id, timestamp} for every user that follows *user_id*.
-    The timestamp is read from the facet on the ~FOLLOWS edge.
-    """
+   
     query = f"""{{
       user(func: eq(user_id, "{user_id}")) {{
         followers: ~FOLLOWS @facets(timestamp) {{

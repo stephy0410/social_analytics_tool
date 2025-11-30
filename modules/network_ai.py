@@ -9,6 +9,7 @@ from collections import Counter
 import re
 import requests
 import time
+import datetime
 
 try:
     nltk.data.find('corpora/stopwords')
@@ -109,10 +110,10 @@ def render(current_user_id):
                         dgraph_db.load_posts_from_csv(client, 'posts.csv')
                         dgraph_db.load_interactions_from_csv(client, 'interactions.csv')
                         dgraph_db.create_follow_edges(client, 'follows.csv')
-                    st.success("✅ Database initialized with sample data!")
+                    st.success(" Database initialized with sample data!")
                     st.rerun()
                 except Exception as e:
-                    st.error(f"❌ Error loading data: {e}")
+                    st.error(f"Error loading data: {e}")
             
             if "show_reset_confirm" not in st.session_state:
                 st.session_state.show_reset_confirm = False
@@ -121,16 +122,16 @@ def render(current_user_id):
                 st.session_state.show_reset_confirm = True
             
             if st.session_state.show_reset_confirm:
-                confirm = st.checkbox("✅ I understand this will delete all data permanently")
+                confirm = st.checkbox(" I understand this will delete all data permanently")
                 if confirm:
                     if st.button("🗑️ Confirm Reset"):
                         with st.spinner("Dropping all data..."):
                             success = dgraph_db.drop_all_data(client)
                             if success:
-                                st.success("✅ Database has been reset successfully!")
+                                st.success(" Database has been reset successfully!")
                                 st.rerun()
                             else:
-                                st.error("❌ Failed to reset database.")
+                                st.error(" Failed to reset database.")
         
         with tab2:
             st.write("**Follow Another User**")
@@ -141,8 +142,8 @@ def render(current_user_id):
                 target_user = st.selectbox("Select user to follow:", user_options)
                 if st.button("👥 Follow User"):
                     ok, msg = dgraph_db.add_realtime_follow(client, current_user_id, target_user)
-                    if ok: st.success(f"✅ {msg}"); st.rerun()
-                    else: st.error(f"❌ {msg}")
+                    if ok: st.success(f" {msg}"); st.rerun()
+                    else: st.error(f" {msg}")
             else:
                 st.info("No other users found. Load sample data first.")
         
@@ -153,25 +154,109 @@ def render(current_user_id):
             
             if st.button(f"🎯 Submit {action}"):
                 if not post_id:
-                    st.error("❌ Please enter a Post ID")
+                    st.error(" Please enter a Post ID")
                 else:
                     with st.spinner("Processing interaction..."):
                         ok, msg = dgraph_db.add_realtime_interaction(client, current_user_id, post_id, action)
-                    if ok: st.success(f"✅ {msg}"); st.rerun()
-                    else: st.error(f"❌ {msg}")
+                    if ok: st.success(f" {msg}"); st.rerun()
+                    else: st.error(f"{msg}")
 
     # --- 2. ENGAGEMENT METRICS ---
+    # --- 2. ENGAGEMENT METRICS ---
     st.subheader("📊 User Engagement Metrics")
-    with st.spinner("Loading engagement data..."):
-        metrics = dgraph_db.get_engagement_metrics(client, current_user_id)
+
+    # [REQUIREMENT] Date Range Filtering
+    # We add UI pickers and pass the strings to dgraph_db
+    col_d1, col_d2 = st.columns(2)
+    today = datetime.date.today()
+    default_start = today - datetime.timedelta(days=30)
     
+    start_date = col_d1.date_input("Start Date", default_start)
+    end_date = col_d2.date_input("End Date", today)
+    
+    # [REQUIREMENT] Engagement Drop-offs (Churn/Decline)
+    # Logic: Compare current selected period vs. the previous period of same length
+    duration = (end_date - start_date).days
+    prev_end = start_date - datetime.timedelta(days=1)
+    prev_start = prev_end - datetime.timedelta(days=duration)
+    
+    with st.spinner("Loading engagement data..."):
+        # Fetch Current Period Data
+        metrics = dgraph_db.get_engagement_metrics(
+            client, 
+            current_user_id, 
+            start_date=start_date.isoformat(), 
+            end_date=end_date.isoformat()
+        )
+        
+        # Fetch Previous Period Data for Comparison
+        prev_metrics = dgraph_db.get_engagement_metrics(
+            client, 
+            current_user_id, 
+            start_date=prev_start.isoformat(), 
+            end_date=prev_end.isoformat()
+        )
+
+    # Calculate Totals for Drop-off Analysis
+    curr_total = metrics['total_likes'] + metrics['total_comments'] + metrics['total_shares']
+    prev_total = prev_metrics['total_likes'] + prev_metrics['total_comments'] + prev_metrics['total_shares']
+    
+    # Calculate % Change
+    if prev_total > 0:
+        delta_pct = ((curr_total - prev_total) / prev_total) * 100
+    else:
+        delta_pct = 100 if curr_total > 0 else 0
+
+    # Display Metrics with Delta (Churn Indicator)
     if metrics and metrics.get('post_count', 0) > 0:
+        st.markdown(f"### 📉 Engagement Analysis ({duration} days)")
+        
         col1, col2, col3, col4 = st.columns(4)
         col1.metric("Total Posts", metrics['post_count'])
-        col2.metric("Total Likes", metrics['total_likes'])
-        col3.metric("Total Comments", metrics['total_comments'])
-        col4.metric("Total Shares", metrics['total_shares'])
         
+        # We use the delta parameter to show growth (green) or decline (red)
+        col2.metric("Total Likes", metrics['total_likes'], delta=f"{metrics['total_likes'] - prev_metrics['total_likes']}")
+        col3.metric("Total Comments", metrics['total_comments'], delta=f"{metrics['total_comments'] - prev_metrics['total_comments']}")
+        
+        # Main Churn/Growth Indicator
+        col4.metric(
+            "Overall Engagement", 
+            curr_total, 
+            delta=f"{delta_pct:.1f}% vs previous period",
+            delta_color="normal" # Automatically red if negative (churn)
+        )
+        
+        if delta_pct < -15:
+            st.warning("⚠️ High engagement drop-off detected (Churn Risk).")
+        
+        st.markdown("---")
+        
+        # [REQUIREMENT] Automated Reports (CSV Export)
+        st.write("**📥 Export Report**")
+        
+        # Create a summary DataFrame for the report
+        report_data = {
+            'Metric': ['Total Posts', 'Total Likes', 'Total Comments', 'Total Shares', 'Engagement Score', 'Start Date', 'End Date'],
+            'Value': [
+                metrics['post_count'], 
+                metrics['total_likes'], 
+                metrics['total_comments'], 
+                metrics['total_shares'], 
+                curr_total,
+                start_date.isoformat(),
+                end_date.isoformat()
+            ]
+        }
+        df_report = pd.DataFrame(report_data)
+        csv = df_report.to_csv(index=False).encode('utf-8')
+        
+        st.download_button(
+            label="📄 Download Summary Report (CSV)",
+            data=csv,
+            file_name=f"engagement_report_{current_user_id}_{today}.csv",
+            mime="text/csv"
+        )
+
         st.write("**📈 Engagement per Post**")
         posts_df = pd.DataFrame(metrics['posts'])
         
@@ -184,6 +269,63 @@ def render(current_user_id):
             st.bar_chart(chart_data.head(10))
         else:
             st.info("No post-level engagement data available.")
+
+        st.markdown("---")
+        st.subheader("📉 Engagement Drop-off Analysis (30-day vs. Prior 30-day)")
+
+        period_days = 30
+        today = datetime.date.today()
+
+        # Define periods
+        cp_end = today
+        cp_start = today - datetime.timedelta(days=period_days)
+        pp_end = cp_start - datetime.timedelta(days=1)
+        pp_start = pp_end - datetime.timedelta(days=period_days)
+
+        # Function to calculate score total
+        def calculate_total_score(metrics):
+            
+            return metrics.get('total_likes', 0) + (metrics.get('total_comments', 0) * 2) + (metrics.get('total_shares', 0) * 3)
+
+        # 1. Current Period Metrics
+        cp_metrics = dgraph_db.get_engagement_metrics(client, current_user_id, start_date=cp_start.isoformat(), end_date=cp_end.isoformat())
+        cp_score = calculate_total_score(cp_metrics)
+
+        # 2. Previous Period
+        pp_metrics = dgraph_db.get_engagement_metrics(client, current_user_id, start_date=pp_start.isoformat(), end_date=pp_end.isoformat())
+        pp_score = calculate_total_score(pp_metrics)
+
+
+        if pp_score > 0:
+            change_percent = ((cp_score - pp_score) / pp_score) * 100
+            delta_text = f"{change_percent:.1f}%"
+        else:
+            # No activity before, can't calculate drop-off
+            change_percent = 0
+            delta_text = "N/A"
+            if cp_score > 0:
+                delta_text = "New Activity"
+
+
+        st.metric(
+            label="Overall Engagement Change",
+            value=f"Current Score: {cp_score}",
+            delta=delta_text,
+            delta_color="normal" if change_percent > 0 else "inverse" # red drop off, green increment
+        )
+
+        with st.expander("Detailed Comparison"):
+            st.write(f"**Current Period ({period_days} days):** {cp_score} (from {cp_start} to {cp_end})")
+            st.write(f"**Previous Period ({period_days} days):** {pp_score} (from {pp_start} to {pp_end})")
+            
+            if change_percent < -15:
+                st.error("🚨 ¡Significant engagement downfall! Investigate content strategy.")
+            elif change_percent < 0:
+                st.warning("⚠️ Engagement is falling slightly.")
+            elif change_percent > 15:
+                st.success("🚀 ¡High engagement increment detected!")
+            else:
+                st.info("Engagement level stable.")
 
         st.markdown("---")
 
