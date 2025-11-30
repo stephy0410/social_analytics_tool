@@ -5,7 +5,6 @@ from datetime import datetime
 import csv
 import os
 
-
 class CassandraDB:
     def __init__(self, host="localhost", port=9042):
         auth_provider = PlainTextAuthProvider(
@@ -35,11 +34,13 @@ class CassandraDB:
         self.session.set_keyspace("social")
 
     def _init_table(self):
+        # NUEVA TABLA basándose en interactions.csv
         self.session.execute(
             """
-            CREATE TABLE IF NOT EXISTS activity_logs (
+            CREATE TABLE IF NOT EXISTS interactions (
                 user_id TEXT,
-                action  TEXT,
+                post_id TEXT,
+                interaction_type TEXT,
                 timestamp TIMESTAMP,
                 PRIMARY KEY (user_id, timestamp)
             ) WITH CLUSTERING ORDER BY (timestamp DESC);
@@ -48,32 +49,25 @@ class CassandraDB:
 
     # ------------------- inserts -----------------------
 
-    def insert_log(self, user_id: str, action: str, timestamp=None):
+    def insert_interaction(self, user_id, post_id, interaction_type, timestamp=None):
         if timestamp is None:
             timestamp = datetime.now()
 
         self.session.execute(
             """
-            INSERT INTO activity_logs (user_id, action, timestamp)
-            VALUES (%s, %s, %s)
+            INSERT INTO interactions (user_id, post_id, interaction_type, timestamp)
+            VALUES (%s, %s, %s, %s)
             """,
-            (user_id, action, timestamp),
+            (user_id, post_id, interaction_type, timestamp),
         )
 
-    def seed_demo_data(self):
-        """Inserta algunos registros de ejemplo si la tabla está vacía."""
-        count = self.session.execute("SELECT COUNT(*) FROM activity_logs").one()["count"]
-        if count > 0:
-            return
-
-        print("Seeding Cassandra with demo activity logs...")
-
-
-    def load_demo_from_csv(self, csv_path: str = "activity_logs.csv"):
-        """Opcional: carga actividades desde un CSV (user_id, action, timestamp)."""
+    def load_interactions_from_csv(self, csv_path: str = "interactions.csv"):
+        """Carga interactions.csv con columnas: user_id, post_id, interaction_type, timestamp"""
         if not os.path.exists(csv_path):
             print(f"CSV not found: {csv_path}")
             return
+
+        print("Importando interactions.csv a Cassandra...")
 
         with open(csv_path, newline="", encoding="utf-8") as f:
             reader = csv.DictReader(f)
@@ -87,18 +81,23 @@ class CassandraDB:
                 else:
                     ts = datetime.now()
 
-                self.insert_log(row["user_id"], row["action"], ts)
+                self.insert_interaction(
+                    row["user_id"],
+                    row["post_id"],
+                    row["interaction_type"],
+                    ts,
+                )
 
-        print("CSV logs imported successfully.")
+        print("Cassandra: interactions CSV importado correctamente.")
 
     # ------------------- queries -----------------------
 
-    def get_activity_by_user(self, user_id: str, limit: int = 50):
-        """Devuelve todas las actividades de un usuario (para el dashboard)."""
+    def get_interactions_by_user(self, user_id: str, limit: int = 50):
+        """Devuelve interactions ordenadas por timestamp DESC."""
         rows = self.session.execute(
             """
-            SELECT user_id, action, timestamp
-            FROM activity_logs
+            SELECT user_id, post_id, interaction_type, timestamp
+            FROM interactions
             WHERE user_id = %s
             LIMIT %s
             """,
@@ -106,17 +105,16 @@ class CassandraDB:
         )
         return list(rows)
 
-    def get_activities_by_type(self, user_id: str, action: str, limit: int = 50):
-        """Filtra actividades por tipo (action)."""
+    def get_interactions_by_type(self, user_id: str, interaction_type: str, limit: int = 50):
+        """Filtra por interaction_type."""
         rows = self.session.execute(
             """
-            SELECT user_id, action, timestamp
-            FROM activity_logs
-            WHERE user_id = %s AND action = %s
+            SELECT user_id, post_id, interaction_type, timestamp
+            FROM interactions
+            WHERE user_id = %s AND interaction_type = %s
             LIMIT %s
             ALLOW FILTERING
             """,
-            (user_id, action, limit),
+            (user_id, interaction_type, limit),
         )
         return list(rows)
-
