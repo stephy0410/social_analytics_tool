@@ -16,9 +16,9 @@ class CassandraDB:
         self._init_table()
 
 
-    # -----------------------------
+    
     #  KEYSPACE
-    # -----------------------------
+    
     def _create_keyspace(self):
         self.session.execute(f"""
             CREATE KEYSPACE IF NOT EXISTS {self.keyspace}
@@ -28,9 +28,9 @@ class CassandraDB:
             }};
         """)
 
-    # -----------------------------
+    
     #  MAIN TABLE
-    # -----------------------------
+    
     def _init_table(self):
         self.session.execute("""
             CREATE TABLE IF NOT EXISTS interactions (
@@ -44,9 +44,9 @@ class CassandraDB:
             ) WITH CLUSTERING ORDER BY (timestamp DESC);
         """)
 
-    # -----------------------------
+    
     # INSERT ROW
-    # -----------------------------
+    
     def insert_interaction(self, user_id, post_id, interaction_type,
                            timestamp, device_type, session_id):
 
@@ -63,9 +63,9 @@ class CassandraDB:
         ))
 
 
-    # -----------------------------
+    
     # LOAD CSV INTO CASSANDRA
-    # -----------------------------
+    
     def load_csv(self, csv_path):
         df = pd.read_csv(csv_path)
 
@@ -84,9 +84,9 @@ class CassandraDB:
         return True
 
 
-    # -----------------------------
+    
     # BASIC QUERY: BY USER
-    # -----------------------------
+    
     def get_interactions_by_user(self, user_id, limit=50):
         query = """
             SELECT * FROM interactions
@@ -100,9 +100,9 @@ class CassandraDB:
         return df.sort_values("timestamp", ascending=False)
 
 
-    # -----------------------------
+    
     # RANGE QUERY (RF-3)
-    # -----------------------------
+    
     def get_interactions_by_time_range(self, user_id, start_date, end_date):
         query = """
             SELECT * FROM interactions
@@ -116,9 +116,9 @@ class CassandraDB:
         return df.sort_values("timestamp", ascending=False)
 
 
-    # -----------------------------
+    
     # DAILY AGGREGATION (RF-2, RF-7)
-    # -----------------------------
+    
     def get_daily_activity_count(self, user_id):
         query = """
             SELECT user_id, timestamp
@@ -136,9 +136,9 @@ class CassandraDB:
         return df.groupby("date").size().reset_index(name="count")
 
 
-    # -----------------------------
+    
     # INACTIVITY PATTERNS (RF-6)
-    # -----------------------------
+    
     def compute_inactivity_periods(self, user_id, days_threshold=7):
         df = self.get_interactions_by_user(user_id, limit=500)
 
@@ -151,9 +151,9 @@ class CassandraDB:
         return df[df["delta"] >= days_threshold]
 
 
-    # -----------------------------
+    
     # ANOMALY DETECTION (RF-5)
-    # -----------------------------
+    
     def detect_abnormal_activity(self, user_id, period="day"):
         df = self.get_daily_activity_count(user_id)
 

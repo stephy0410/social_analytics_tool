@@ -169,7 +169,7 @@ def save_follow_to_csv(follower_id, followed_id, file_path='follows.csv'):
         logger.error(f"Error saving follow to CSV: {e}")
         return False
 
-# --- IMPROVED DATA LOADERS ---
+# DATA LOADERS 
 def load_users_from_csv(client, file_path='users.csv'):
     txn = client.txn()
     try:
@@ -273,7 +273,7 @@ def load_interactions_from_csv(client, file_path='interactions.csv'):
                     post_uid = get_uid(client, post_id, is_post=True)
                     
                     if user_uid and post_uid:
-                        # ✅ CORRECT: Store timestamp as a FACET using pipe syntax
+                        
                         mutation = {
                             'uid': user_uid,
                             edge_name: {
@@ -357,7 +357,7 @@ def create_follow_edges(client, file_path='follows.csv'):
         return 0
     finally:
         txn.discard()
-# --- IMPROVED REAL-TIME UPDATES WITH CSV PERSISTENCE ---
+# REAL-TIME UPDATES WITH CSV PERSISTENCE 
 def add_realtime_interaction(client, user_id, post_id, interaction_type):
     
     if not user_id or not post_id:
@@ -425,7 +425,7 @@ def add_realtime_follow(client, follower_id, followed_id):
 
     txn = client.txn()
     try:
-        # --- FIX: Use 'FOLLOWS|key' syntax ---
+        
         mutation = {
             'uid': follower_uid,
             'FOLLOWS': {
@@ -450,7 +450,7 @@ def get_engagement_metrics(client, user_id, start_date=None, end_date=None):
     except Exception:
         pass
     
-    logger.info(f"=== GET_ENGAGEMENT_METRICS ===")
+    logger.info(f"GET_ENGAGEMENT_METRICS ")
     logger.info(f"User: {user_id}, Dates: {start_date} to {end_date}")
     
     # Get user's posts
@@ -611,7 +611,7 @@ def get_all_users(client):
     except: return []
 
 def drop_all_data(client):
-    """Fixed drop all data function"""
+    
     try:
         op = pydgraph.Operation(drop_all=True)
         client.alter(op)

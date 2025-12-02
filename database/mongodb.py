@@ -8,9 +8,7 @@ from datetime import datetime
 
 class MongoDBManager:
     def __init__(self, uri="mongodb://root:example@localhost:27017/", db_name="social_analytics"):
-        # Se asume que no necesitas credenciales si usas la URI por defecto.
-        # Si usas el docker-compose.yml que subiste, puedes necesitar:
-        # uri = "mongodb://root:example@localhost:27017/"
+        
         self.client = MongoClient(uri)
         self.db = self.client[db_name]
 
@@ -18,9 +16,9 @@ class MongoDBManager:
         self.users = self.db["users"]
         self.profiles = self.db["profiles"]
 
-    # ============================================================
+    
     # INDEXES
-    # ============================================================
+    
     def create_indexes(self):
         print("Creating indexes...")
 
@@ -35,9 +33,9 @@ class MongoDBManager:
 
         print("Indexes created successfully!")
 
-    # ============================================================
-    # LOAD USERS FROM CSV (CORREGIDA con manejo de DuplicateKeyError)
-    # ============================================================
+    
+    # LOAD USERS FROM CSV 
+    
     def load_users_from_csv(self, filepath="users.csv"):
         print("Loading users from CSV...")
 
@@ -92,9 +90,9 @@ class MongoDBManager:
 
         print("Users imported successfully!")
 
-    # ============================================================
+    
     # CREATE USER
-    # ============================================================
+    
     def create_user(self, username, email, password, full_name, age, gender):
         if self.username_exists(username):
             raise ValueError("Username already exists")
@@ -140,9 +138,9 @@ class MongoDBManager:
             print(f"Error al escribir en users.csv: {e}")
         return user_id
 
-    # ============================================================
+    
     # UPDATE PROFILE
-    # ============================================================
+    
     def update_profile(self, username, updates: dict):
         updates["timestamps.modified_at"] = datetime.utcnow()
         return self.profiles.update_one(
@@ -150,29 +148,24 @@ class MongoDBManager:
             {"$set": updates}
         )
 
-    # Update profile picture
-    def update_profile_picture(self, username, new_url):
-        return self.update_profile(username, {"profile_picture_url": new_url})
-
-    # ============================================================
+    
     # PUBLIC READ
-    # ============================================================
+    
     def get_public_profile(self, username):
         return self.profiles.find_one({"username": username})
 
-    # ============================================================
+    
     # VALIDATIONS
-    # ============================================================
+    
     def username_exists(self, username):
         return self.users.find_one({"username": username}) is not None
 
     def email_exists(self, email):
         return self.users.find_one({"email": email}) is not None
 
-    # ============================================================
-    # ACCOUNT STATUS MANAGEMENT (REQ. 8)
-    # ⚠️ AÑADIDO: Función para cambiar el estado de la cuenta
-    # ============================================================
+    
+    # ACCOUNT STATUS MANAGEMENT 
+    
     def set_account_status(self, username: str, new_status: str):
         """Cambia el estado de la cuenta de un usuario (active, suspended, deleted)."""
         valid_statuses = ["active", "suspended", "deleted"]
@@ -190,10 +183,9 @@ class MongoDBManager:
         )
         return result
 
-    # ============================================================
-    # LOGIN — SECURE WITH BCRYPT (CORREGIDO PARA REQ. 8)
-    # ⚠️ CORREGIDO: Añadida verificación de account_status
-    # ============================================================
+    
+    # LOGIN — SECURE WITH BCRYPT 
+    
     def login(self, username, password):
         user = self.users.find_one({"username": username})
 
@@ -203,18 +195,17 @@ class MongoDBManager:
         hashed = user["password_hash"].encode()
 
         if bcrypt.checkpw(password.encode(), hashed):
-            # 🔑 REQUERIMIENTO 8: Lógica de Manejo de Estado
-            # Bloquea el login si la cuenta no está activa.
+            
             if user.get('account_status') != 'active':
                 raise PermissionError(f"Login failed: Account is {user.get('account_status', 'unknown').upper()}.")
                 
-            return user  # Login exitoso
+            return user  #
 
-        return None  # Contraseña inválida
+        return None 
     
-    # ============================================================
+    
     # ADD SOCIAL ACCOUNT (with extended fields)
-    # ============================================================
+    
     def add_social_account(self, username, platform, handle, followers=0, posts=0, profile_url=None):
         account = {
             "platform_name": platform,
@@ -240,18 +231,18 @@ class MongoDBManager:
         )
 
 
-    # ============================================================
+    
     # DELETE USER
-    # ============================================================
+    
     def delete_user(self, username):
-        # ⚠️ Nota: Para eliminar completamente, la función sigue siendo correcta (Req. 7)
+        
         self.users.delete_one({"username": username})
         self.profiles.delete_one({"username": username})
         return True
 
-    # ============================================================
+    
     # ANALYTICS
-    # ============================================================
+    
     def count_social_platform_usage(self):
         pipeline = [
             {"$unwind": "$linked_social_accounts"},
@@ -265,13 +256,13 @@ class MongoDBManager:
         ]
         return list(self.profiles.aggregate(pipeline))
 
-    # ============================================================
-    # INIT DB (CORREGIDA para limpiar colecciones)
-    # ============================================================
+    
+    # INIT DB 
+    
     def initialize_database(self):
         print("Initializing MongoDB database...")
         
-        # ⚠️ RECOMENDACIÓN: Limpiar las colecciones para evitar errores de clave duplicada
+        
         print("Clearing 'users' and 'profiles' collections...")
         self.users.delete_many({})
         self.profiles.delete_many({})

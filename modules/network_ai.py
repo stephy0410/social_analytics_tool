@@ -94,7 +94,7 @@ def render(current_user_id):
     stub = dgraph_db.create_client_stub()
     client = dgraph_db.create_client(stub)
 
-    # --- 1. ADMIN & REAL-TIME ---
+    #  1. ADMIN & REAL-TIME 
     with st.expander("⚙️ Admin & Real-Time Actions", expanded=False):
         tab1, tab2, tab3 = st.tabs(["Data Load", "Follow User", "Interact with Post"])
         
@@ -161,8 +161,7 @@ def render(current_user_id):
                     if ok: st.success(f" {msg}"); st.rerun()
                     else: st.error(f"{msg}")
 
-    # --- 2. ENGAGEMENT METRICS ---
-    # --- 2. ENGAGEMENT METRICS ---
+    #  2. ENGAGEMENT METRICS 
     st.subheader("📊 User Engagement Metrics")
 
     # [REQUIREMENT] Date Range Filtering
@@ -370,7 +369,7 @@ def render(current_user_id):
 
     st.markdown("---")
 
-    # --- 3. GRAPH VISUALIZATION & COMMUNITIES ---
+    # 3. GRAPH VISUALIZATION & COMMUNITIES 
     col1, col2 = st.columns([3, 1])
     
     with col1:
@@ -431,7 +430,7 @@ def render(current_user_id):
 
         st.markdown("---")
 
-    # --- 4. PROPAGATION ANALYSIS ---
+    # 4. PROPAGATION ANALYSIS ---
     st.subheader("🔗 Information Propagation Path")
     col_p1, col_p2, col_p3 = st.columns([1, 1, 1])
     
@@ -453,7 +452,7 @@ def render(current_user_id):
                 else:
                     st.warning("❌ No connection path found")
 
-    # --- 5. INFLUENCERS ---
+    # 5. INFLUENCERS 
     st.subheader("🏆 Top Influencers")
     influencers = dgraph_db.get_influencers(client, min_followers=3)
     if influencers:
@@ -466,7 +465,7 @@ def render(current_user_id):
     
     st.markdown("---")
     
-    # --- 6. SEMANTIC SEARCH ---
+    # 6. SEMANTIC SEARCH 
     st.subheader("🤖 AI Semantic Search (ChromaDB)")
     try:
         from database import chroma_db
@@ -590,7 +589,7 @@ def render(current_user_id):
                     st.text(f"{it['Sentiment']} ({it['Score']}):\n{it['Post'][:60]}...")
 
     st.markdown("---")
-    # --- 8. KEYWORD EXTRACTION ---
+    # 8. KEYWORD EXTRACTION 
     st.subheader("💡 Innovation: Topic Keyword Extractor")
     topic_query_key = st.text_input("Find Key Topics in Posts about:", key="topic_key_q")
     if st.button("Extract Keywords"):

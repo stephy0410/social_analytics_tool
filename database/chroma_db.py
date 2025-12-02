@@ -37,10 +37,7 @@ def load_from_csv(file_path='posts.csv'):
         return "No content found in CSV."
 
 def query_database(query_text):
-    """
-    Performs the query using class logic:
-    collection.query(query_texts=[...], n_results=3) [cite: 46-49]
-    """
+   
     results = collection.query(
         query_texts=[query_text],
         n_results=3  
