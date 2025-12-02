@@ -1,120 +1,174 @@
 from cassandra.cluster import Cluster
-from cassandra.auth import PlainTextAuthProvider
-from cassandra.query import dict_factory
+from cassandra.query import SimpleStatement
+import pandas as pd
 from datetime import datetime
-import csv
-import os
+
 
 class CassandraDB:
-    def __init__(self, host="localhost", port=9042):
-        auth_provider = PlainTextAuthProvider(
-            username="cassandra",
-            password="cassandra",
-        )
-        cluster = Cluster([host], port=port, auth_provider=auth_provider)
+    def __init__(self, host="127.0.0.1", keyspace="social"):
+        self.cluster = Cluster([host])
+        self.session = self.cluster.connect()
 
-        self.session = cluster.connect()
-        self.session.row_factory = dict_factory
+        self.keyspace = keyspace
+        self._create_keyspace()
+        self.session.set_keyspace(keyspace)
 
-        self._init_keyspace()
         self._init_table()
 
-    # ------------------- init schema -------------------
 
-    def _init_keyspace(self):
-        self.session.execute(
-            """
-            CREATE KEYSPACE IF NOT EXISTS social
-            WITH replication = {
+    # -----------------------------
+    #  KEYSPACE
+    # -----------------------------
+    def _create_keyspace(self):
+        self.session.execute(f"""
+            CREATE KEYSPACE IF NOT EXISTS {self.keyspace}
+            WITH replication = {{
                 'class': 'SimpleStrategy',
                 'replication_factor': 1
-            };
-            """
-        )
-        self.session.set_keyspace("social")
+            }};
+        """)
 
+    # -----------------------------
+    #  MAIN TABLE
+    # -----------------------------
     def _init_table(self):
-        # NUEVA TABLA basándose en interactions.csv
-        self.session.execute(
-            """
+        self.session.execute("""
             CREATE TABLE IF NOT EXISTS interactions (
                 user_id TEXT,
                 post_id TEXT,
                 interaction_type TEXT,
                 timestamp TIMESTAMP,
+                device_type TEXT,
+                session_id TEXT,
                 PRIMARY KEY (user_id, timestamp)
             ) WITH CLUSTERING ORDER BY (timestamp DESC);
-            """
-        )
+        """)
 
-    # ------------------- inserts -----------------------
+    # -----------------------------
+    # INSERT ROW
+    # -----------------------------
+    def insert_interaction(self, user_id, post_id, interaction_type,
+                           timestamp, device_type, session_id):
 
-    def insert_interaction(self, user_id, post_id, interaction_type, timestamp=None):
-        if timestamp is None:
-            timestamp = datetime.now()
+        query = """
+            INSERT INTO interactions (
+                user_id, post_id, interaction_type,
+                timestamp, device_type, session_id
+            ) VALUES (%s, %s, %s, %s, %s, %s);
+        """
 
-        self.session.execute(
-            """
-            INSERT INTO interactions (user_id, post_id, interaction_type, timestamp)
-            VALUES (%s, %s, %s, %s)
-            """,
-            (user_id, post_id, interaction_type, timestamp),
-        )
+        self.session.execute(query, (
+            user_id, post_id, interaction_type,
+            timestamp, device_type, session_id
+        ))
 
-    def load_interactions_from_csv(self, csv_path: str = "interactions.csv"):
-        """Carga interactions.csv con columnas: user_id, post_id, interaction_type, timestamp"""
-        if not os.path.exists(csv_path):
-            print(f"CSV not found: {csv_path}")
-            return
 
-        print("Importando interactions.csv a Cassandra...")
+    # -----------------------------
+    # LOAD CSV INTO CASSANDRA
+    # -----------------------------
+    def load_csv(self, csv_path):
+        df = pd.read_csv(csv_path)
 
-        with open(csv_path, newline="", encoding="utf-8") as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                ts = row.get("timestamp")
-                if ts:
-                    try:
-                        ts = datetime.fromisoformat(ts)
-                    except ValueError:
-                        ts = datetime.now()
-                else:
-                    ts = datetime.now()
+        for _, row in df.iterrows():
+            ts = pd.to_datetime(row["timestamp"])
 
-                self.insert_interaction(
-                    row["user_id"],
-                    row["post_id"],
-                    row["interaction_type"],
-                    ts,
-                )
+            self.insert_interaction(
+                row["user_id"],
+                row["post_id"],
+                row["interaction_type"],
+                ts,
+                row.get("device_type", "unknown"),
+                row.get("session_id", "none")
+            )
 
-        print("Cassandra: interactions CSV importado correctamente.")
+        return True
 
-    # ------------------- queries -----------------------
 
-    def get_interactions_by_user(self, user_id: str, limit: int = 50):
-        """Devuelve interactions ordenadas por timestamp DESC."""
-        rows = self.session.execute(
-            """
-            SELECT user_id, post_id, interaction_type, timestamp
-            FROM interactions
+    # -----------------------------
+    # BASIC QUERY: BY USER
+    # -----------------------------
+    def get_interactions_by_user(self, user_id, limit=50):
+        query = """
+            SELECT * FROM interactions
             WHERE user_id = %s
-            LIMIT %s
-            """,
-            (user_id, limit),
-        )
-        return list(rows)
+            LIMIT %s;
+        """
 
-    def get_interactions_by_type(self, user_id: str, interaction_type: str, limit: int = 50):
-        """Filtra por interaction_type."""
-        rows = self.session.execute(
-            """
-            SELECT user_id, post_id, interaction_type, timestamp
+        rows = self.session.execute(query, (user_id, limit))
+
+        df = pd.DataFrame(rows)
+        return df.sort_values("timestamp", ascending=False)
+
+
+    # -----------------------------
+    # RANGE QUERY (RF-3)
+    # -----------------------------
+    def get_interactions_by_time_range(self, user_id, start_date, end_date):
+        query = """
+            SELECT * FROM interactions
+            WHERE user_id = %s
+            AND timestamp >= %s
+            AND timestamp <= %s;
+        """
+
+        rows = self.session.execute(query, (user_id, start_date, end_date))
+        df = pd.DataFrame(rows)
+        return df.sort_values("timestamp", ascending=False)
+
+
+    # -----------------------------
+    # DAILY AGGREGATION (RF-2, RF-7)
+    # -----------------------------
+    def get_daily_activity_count(self, user_id):
+        query = """
+            SELECT user_id, timestamp
             FROM interactions
-            WHERE user_id = %s AND interaction_type = %s
-            LIMIT %s
-            ALLOW FILTERING
-            """,
-            (user_id, interaction_type, limit),
+            WHERE user_id = %s;
+        """
+
+        rows = self.session.execute(query, (user_id,))
+
+        df = pd.DataFrame(rows)
+        if df.empty:
+            return df
+
+        df["date"] = df["timestamp"].dt.date
+        return df.groupby("date").size().reset_index(name="count")
+
+
+    # -----------------------------
+    # INACTIVITY PATTERNS (RF-6)
+    # -----------------------------
+    def compute_inactivity_periods(self, user_id, days_threshold=7):
+        df = self.get_interactions_by_user(user_id, limit=500)
+
+        if df.empty:
+            return pd.DataFrame()
+
+        df = df.sort_values("timestamp")
+        df["delta"] = df["timestamp"].diff().dt.days
+
+        return df[df["delta"] >= days_threshold]
+
+
+    # -----------------------------
+    # ANOMALY DETECTION (RF-5)
+    # -----------------------------
+    def detect_abnormal_activity(self, user_id, period="day"):
+        df = self.get_daily_activity_count(user_id)
+
+        if df.empty:
+            return df, None, None
+
+        mean = df["count"].mean()
+        std = df["count"].std()
+
+        spike_threshold = mean + 2 * std
+        drop_threshold = mean - 2 * std
+
+        df["status"] = df["count"].apply(
+            lambda x: "SPIKE" if x > spike_threshold
+            else ("DROP" if x < drop_threshold else "normal")
         )
-        return list(rows)
+
+        return df, spike_threshold, drop_threshold

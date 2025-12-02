@@ -2,53 +2,37 @@ import streamlit as st
 import pandas as pd
 from database.cassandra_db import CassandraDB
 
+
 db = CassandraDB()
 
-def render(current_user_id: str):
-    st.header("📘 User Interactions – Cassandra")
 
-    # --- Cargar interactions.csv ---
-    st.subheader("Load interactions.csv into Cassandra")
-
-    if st.button("📥 Import interactions.csv"):
-        try:
-            db.load_interactions_from_csv("interactions.csv")
-            st.success("interactions.csv imported into Cassandra successfully.")
-        except Exception as e:
-            st.error(f"Error importing CSV: {e}")
-
-    st.markdown("---")
-
-    # --- Mostrar actividad del usuario actual ---
-    st.subheader(f"Recent Interactions for {current_user_id}")
+def render(user_id):
+    st.title(f"Your Recent Activity ({user_id})")
 
     try:
-        logs = db.get_interactions_by_user(current_user_id)
+        df = db.get_interactions_by_user(user_id)
 
-        if not logs:
-            st.info("No interactions found for this user yet.")
+        if df.empty:
+            st.info("No activity found for this user.")
             return
 
-        df = pd.DataFrame(logs).sort_values("timestamp", ascending=False)
         st.dataframe(df)
 
-        # -------- Filtro por tipo de interacción ----------
-        st.subheader("Filter by interaction type")
+        st.subheader("Daily Activity Summary")
+        daily = db.get_daily_activity_count(user_id)
+        st.bar_chart(daily.set_index("date")["count"])
 
-        available_types = sorted({row["interaction_type"] for row in logs})
-        selected_type = st.selectbox("Select interaction type", available_types)
+        st.subheader("Inactivity Periods")
+        inactive = db.compute_inactivity_periods(user_id)
+        st.dataframe(inactive)
 
-        filtered = db.get_interactions_by_type(current_user_id, selected_type)
-        st.write(f"Found {len(filtered)} interactions of type '{selected_type}'")
+        st.subheader("Anomaly Detection (Spikes & Drops)")
+        anomalies, spike, drop = db.detect_abnormal_activity(user_id)
+        st.dataframe(anomalies)
 
-        st.dataframe(pd.DataFrame(filtered))
+        st.write(f"Spike threshold: {spike}")
+        st.write(f"Drop threshold: {drop}")
 
     except Exception as e:
-        st.error(f"Error in Interactions module: {e}")
+        st.error(f"Error in Activity Logs module: {e}")
 
-    if st.button("🗑️ Clear All Interactions (truncate table)"):
-        try:
-            db.session.execute("TRUNCATE interactions")
-            st.success("All interactions deleted.")
-        except Exception as e:
-            st.error(f"Error clearing interactions: {e}")
