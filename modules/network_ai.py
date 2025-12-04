@@ -43,7 +43,7 @@ def analyze_sentiment_hf_api(text, api_key, max_retries=3):
                         # Fallback if API returns flat dict
                         top_result = first_input_scores
 
-                    # 2. Map roberta labels to your UI labels
+                    # 2. Map roberta labels to UI labels
                     # LABEL_0: Negative, LABEL_1: Neutral, LABEL_2: Positive
                     roberta_map = {
                         "LABEL_0": "Negative 🔴",
@@ -56,7 +56,6 @@ def analyze_sentiment_hf_api(text, api_key, max_retries=3):
                     final_label = roberta_map.get(api_label, api_label)
                     upper_label = final_label.upper()
                     
-                    # Normalize legacy caps if needed
                     if upper_label == "NEGATIVE": final_label = "Negative 🔴"
                     elif upper_label == "POSITIVE": final_label = "Positive 🟢"
                     elif upper_label == "NEUTRAL": final_label = "Neutral ⚪"
@@ -430,7 +429,7 @@ def render(current_user_id):
 
         st.markdown("---")
 
-    # 4. PROPAGATION ANALYSIS ---
+    # 4. PROPAGATION ANALYSIS 
     st.subheader("🔗 Information Propagation Path")
     col_p1, col_p2, col_p3 = st.columns([1, 1, 1])
     
@@ -450,7 +449,7 @@ def render(current_user_id):
                     chain = " ➡️ ".join([n['user_id'] for n in path])
                     st.success(f"**Path Found:** {chain}")
                 else:
-                    st.warning("❌ No connection path found")
+                    st.warning("No connection path found")
 
     # 5. INFLUENCERS 
     st.subheader("🏆 Top Influencers")
@@ -513,7 +512,7 @@ def render(current_user_id):
         )
 
         if default_key:
-            st.success("✅ API key loaded from secrets file")
+            st.success(" API key loaded from secrets file")
         else:
             st.caption("📝 [Get your free API key here](https://huggingface.co/settings/tokens)")
             st.info("💡 Tip: Save your key in `.streamlit/secrets.toml` to avoid pasting it each time")
@@ -554,7 +553,7 @@ def render(current_user_id):
             progress.empty()
 
             if not sentiment_data:
-                st.error("❌ Could not analyze any posts – check key / model status")
+                st.error(" Could not analyze any posts – check key / model status")
                 st.stop()
 
             st.info(f"📊  Analyzed {len(sentiment_data)} posts")

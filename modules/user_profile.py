@@ -100,7 +100,7 @@ def render(current_user_id):
     
     # DELETE SOCIAL ACCOUNT
     
-    st.subheader("❌ Remove Linked Account")
+    st.subheader(" Remove Linked Account")
 
     if linked:
         to_delete = st.selectbox(
@@ -173,14 +173,14 @@ def render(current_user_id):
     user_doc = db.users.find_one({"username": current_user_id})
     current_status = user_doc.get('account_status', 'active')
 
-    st.info(f"Estado Actual: **{current_status.upper()}**")
+    st.info(f"Actual State: **{current_status.upper()}**")
 
     col_status, col_btn = st.columns([0.6, 0.4])
 
     with col_status:
        
         new_status = st.selectbox(
-            "Seleccionar Nuevo Estado:",
+            "Selecct New State:",
             ["active", "suspended"],
             index=["active", "suspended"].index(current_status if current_status in ["active", "suspended"] else "active"),
             key="status_select"
@@ -188,13 +188,13 @@ def render(current_user_id):
 
     with col_btn:
         st.markdown("<br>", unsafe_allow_html=True) 
-        if st.button(f"Aplicar Estado: {new_status.upper()}"):
+        if st.button(f"Apply State: {new_status.upper()}"):
             try:
                 db.set_account_status(current_user_id, new_status)
-                st.success(f"✅ Estado de cuenta actualizado a '{new_status.upper()}'.")
+                st.success(f" Actualization state from profile to '{new_status.upper()}'.")
                 rerun()
 
             except Exception as e:
-                st.error(f"❌ Error al actualizar estado: {e}")
+                st.error(f" Error  {e}")
 
    

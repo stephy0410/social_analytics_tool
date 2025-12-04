@@ -45,7 +45,7 @@ class MongoDBManager:
             for row in reader:
                 raw_id = row["user_id"]
                 username = raw_id
-                # Generamos el email, que es el campo con el índice único
+               
                 email = f"{raw_id}@example.com" 
                 full_name = raw_id.replace("_", " ").title()
 
@@ -76,16 +76,16 @@ class MongoDBManager:
                     "linked_social_accounts": []
                 }
 
-                # APLICACIÓN DE LA CORRECCIÓN: Manejar el error de clave duplicada
+           
                 try:
-                    # Intenta insertar ambos documentos
+                    
                     self.users.insert_one(user_doc)
                     self.profiles.insert_one(profile_doc)
                 except DuplicateKeyError:
-                    # Si ya existe por 'email' o 'username' (el índice único), lo ignoramos.
+                    
                     print(f"Skipping existing user: {username} ({email}). Already imported.")
                 except Exception as e:
-                    # Maneja cualquier otro error inesperado.
+                    
                     print(f"An unexpected error occurred for user {username}: {e}")
 
         print("Users imported successfully!")
@@ -289,10 +289,10 @@ class MongoDBManager:
                             writer.writerow([username])
                             count += 1
                             
-                print(f"✅ ¡Sincronización exitosa! Se exportaron {count} usuarios a {filepath}.")
+                
                 
             except Exception as e:
-                print(f"❌ Error crítico durante la sincronización: {e}")
+                print(f" Error : {e}")
 
 # RUN STANDALONE
 if __name__ == "__main__":

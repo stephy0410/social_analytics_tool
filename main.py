@@ -2,7 +2,7 @@ import streamlit as st
 import sys
 import os
 
-# --- FIX: Add only the project root to sys.path ---
+
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, PROJECT_ROOT)
 
@@ -14,21 +14,21 @@ MODULES_DIR = "modules"
 NETWORK_AI_FILE = os.path.join(MODULES_DIR, "network_ai.py")
 
 
-# --- PAGE CONFIGURATION ---
+# PAGE CONFIGURATION 
 st.set_page_config(
     page_title="Social Media Analytics Tool",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# --- 1. SAFE IMPORT SYSTEM ---
+# 1. SAFE IMPORT SYSTEM 
 modules_status = {
     "profile": False,
     "activity": False,
     "network": False
 }
 
-# Try flat imports first
+
 try:
     from modules import user_profile
     modules_status["profile"] = True
@@ -48,7 +48,7 @@ try:
 except:
     pass
 
-# --- LOGIN SYSTEM (MongoDB + bcrypt) ---
+# LOGIN SYSTEM (MongoDB + bcrypt) 
 import bcrypt
 from database.mongodb import MongoDBManager
 
@@ -61,7 +61,7 @@ try:
         # Call the function to load users (Ensure this exists in your mongodb.py)
         db_auth.load_users_from_csv("users.csv") 
         
-        print("✅ Auto-load complete.")
+        print("Auto-load complete.")
 except Exception as e:
     print(f"Auto-load warning: {e}")
 # Initialize session state
@@ -81,17 +81,13 @@ def login_screen():
 
         if user:
 
-            # ===============================
-            #  🚫 Account status validation
-            # ===============================
+            #   Account status validation
             status = user.get("account_status", "active")
             if status != "active":
                 st.error(f"Your account is **{status}**. Login is not allowed.")
                 st.stop()
 
-            # ===============================
-            #  🔐 Password validation
-            # ===============================
+            #  Password validation
             stored_hash = user.get("password_hash").encode()
 
             if bcrypt.checkpw(password.encode(), stored_hash):
@@ -153,7 +149,7 @@ if not st.session_state.authenticated:
 
 
 
-# --- 2. SIDEBAR (Dynamic User Selection) ---
+# 2. SIDEBAR (Dynamic User Selection) 
 st.sidebar.title("Analytics Controls")
 
 real_users = []
@@ -171,7 +167,7 @@ except Exception as e:
     st.sidebar.error(f"Dgraph Connection Error: {e}")
 
 
-# --- Dropdown logic ---
+# Dropdown logic 
 if real_users:
     user_list = [u['user_id'] for u in real_users]
 
@@ -198,7 +194,7 @@ st.sidebar.markdown(f"**Active ID:** `{current_user_id}`")
 st.sidebar.markdown("---")
 
 
-# --- 3. MAIN CONTENT ---
+# 3. MAIN CONTENT 
 st.title(f"Dashboard: {current_user_name}")
 
 tab1, tab2, tab3 = st.tabs([
@@ -208,7 +204,7 @@ tab1, tab2, tab3 = st.tabs([
 ])
 
 
-# --- TAB 1: PROFILE ---
+# TAB 1: PROFILE 
 with tab1:
     if modules_status["profile"]:
         try:
@@ -219,7 +215,7 @@ with tab1:
         st.warning(" user_profile.py not found.")
 
 
-# --- TAB 2: ACTIVITY ---
+#TAB 2: ACTIVITY 
 with tab2:
     if modules_status["activity"]:
         try:
@@ -231,7 +227,7 @@ with tab2:
 
 
 
-# --- TAB 3: NETWORK (YOUR PART) ---
+#  TAB 3: NETWORK (YOUR PART) 
 with tab3:
     if modules_status["network"]:
         try:

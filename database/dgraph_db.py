@@ -61,7 +61,7 @@ def create_schema(client):
     op = pydgraph.Operation(schema=schema)
     client.alter(op)
     logger.info("Schema created successfully")
-# IMPROVED UID LOOKUP
+# UID LOOKUP
 def get_uid(client, identifier, is_post=False):
     """More robust UID lookup that handles both existing and new nodes"""
     if not identifier:
@@ -295,7 +295,7 @@ def load_interactions_from_csv(client, file_path='interactions.csv'):
                     continue
         
         txn.commit()
-        logger.info(f"✓ Loaded {success_count} interactions WITH timestamp facets")
+        logger.info(f"Loaded {success_count} interactions WITH timestamp facets")
         return success_count
     except Exception as e:
         logger.error(f"Error loading interactions: {e}")
